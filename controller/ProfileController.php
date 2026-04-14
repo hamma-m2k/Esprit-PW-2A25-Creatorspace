@@ -11,7 +11,10 @@ class ProfileController
 
     public function __construct()
     {
-        $this->userModel = new UserModel();
+        // FIX: UserModel requires $pdo — load config first
+        require_once __DIR__ . '/../model/config.php';
+        require_once __DIR__ . '/../model/UserModel.php';
+        $this->userModel = new UserModel($pdo);
     }
 
     public function show(): void

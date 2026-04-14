@@ -16,7 +16,7 @@ require_once __DIR__ . '/../layout/header.php';
       </div>
       <nav class="sidebar-nav">
         <div class="sidebar-section-label">Principal</div>
-        <a href="index.php?page=dashboard">
+        <a href="index.php?ctrl=user&action=index">
           <button class="sidebar-item <?= $page === 'dashboard' ? 'active' : '' ?>">
             <span class="sidebar-icon">📊</span><span>Dashboard</span>
           </button>
@@ -53,7 +53,7 @@ require_once __DIR__ . '/../layout/header.php';
             <div class="sidebar-uname"><?= htmlspecialchars($currentUser['name'] ?? 'Admin') ?></div>
             <div class="sidebar-urole"><?= htmlspecialchars($currentUser['role'] ?? 'Admin') ?></div>
           </div>
-          <a href="index.php?page=logout">
+          <a href="index.php?ctrl=auth&action=logout">
             <button class="sidebar-logout" title="Déconnexion">↩</button>
           </a>
         </div>

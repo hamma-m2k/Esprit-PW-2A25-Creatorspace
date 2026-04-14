@@ -1,0 +1,87 @@
+<?php require_once __DIR__ . '/layout_back.php'; ?>
+
+<div class="back-section active" id="back-list">
+
+  <!-- PAGE HEADER -->
+  <div class="back-header">
+    <div>
+      <h2 style="font-size:1.6rem; color:var(--text);">👥 Gestion des utilisateurs</h2>
+      <p style="color:var(--text3); font-size:0.9rem; margin-top:4px;">
+        <?= count($users) ?> utilisateur(s) enregistré(s)
+      </p>
+    </div>
+    <a href="index.php?ctrl=user&action=create">
+      <button class="btn btn-primary btn-sm">➕ Ajouter</button>
+    </a>
+  </div>
+
+  <?php if (isset($_GET['success'])): ?>
+  <div class="toast success" style="position:static;display:flex;margin-bottom:20px;animation:none;">
+    <span class="toast-msg">
+      <?php
+      if     ($_GET['success'] === 'ajout')       echo '✅ Utilisateur ajouté avec succès.';
+      elseif ($_GET['success'] === 'modif')       echo '✅ Utilisateur modifié avec succès.';
+      elseif ($_GET['success'] === 'suppression') echo '✅ Utilisateur supprimé avec succès.';
+      ?>
+    </span>
+  </div>
+  <?php endif; ?>
+
+  <!-- TABLE -->
+  <div class="table-card">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Nom</th>
+            <th>Prénom</th>
+            <th>Mail</th>
+            <th>Rôle</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php if (empty($users)): ?>
+          <tr>
+            <td colspan="5" style="text-align:center; color:var(--text3); padding:28px;">
+              Aucun utilisateur enregistré.
+            </td>
+          </tr>
+          <?php else: ?>
+          <?php foreach ($users as $u): ?>
+          <tr>
+            <td style="font-weight:600; color:var(--text);"><?= htmlspecialchars($u['nom']) ?></td>
+            <td style="color:var(--text2);"><?= htmlspecialchars($u['prenom']) ?></td>
+            <td style="color:var(--text2);"><?= htmlspecialchars($u['mail']) ?></td>
+            <td>
+              <?php if ($u['role'] === 'admin'): ?>
+                <span class="badge badge-pro">Admin</span>
+              <?php else: ?>
+                <span class="badge badge-verified">User</span>
+              <?php endif; ?>
+            </td>
+            <td>
+              <div class="table-actions">
+                <a href="index.php?ctrl=user&action=edit&id=<?= (int)$u['id'] ?>">
+                  <button class="action-btn" title="Modifier"
+                          style="color:var(--accent); border-color:var(--accent);">
+                    ✏️
+                  </button>
+                </a>
+                <a href="index.php?ctrl=user&action=delete&id=<?= (int)$u['id'] ?>"
+                   onclick="return window.confirm('Confirmer la suppression de cet utilisateur ?')">
+                  <button class="action-btn del" title="Supprimer">🗑️</button>
+                </a>
+              </div>
+            </td>
+          </tr>
+          <?php endforeach; ?>
+          <?php endif; ?>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<?php require_once __DIR__ . '/layout_back_end.php'; ?>

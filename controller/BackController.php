@@ -13,8 +13,10 @@ class BackController
 
     public function __construct()
     {
-        $this->userModel = new UserModel();
-        // FIX: Auth guard enforced at Controller level for ALL backoffice routes.
+        // FIX: UserModel requires $pdo — load config first
+        require_once __DIR__ . '/../model/config.php';
+        require_once __DIR__ . '/../model/UserModel.php';
+        $this->userModel = new UserModel($pdo);
         $this->requireAuth();
     }
 

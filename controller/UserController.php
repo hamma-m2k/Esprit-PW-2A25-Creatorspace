@@ -1,177 +1,252 @@
 <?php
-/**
- * UserController — handles user CRUD for backoffice.
- * Validation: PHP server-side (here) + JS client-side (view/js/validate.js).
- * NO HTML5 validation attributes used anywhere.
- */
-class UserController
-{
-    private UserModel $userModel;
+// controller/UserController.php — no HTML, no SQL
+// session_start() géré dans index.php
 
-    public function __construct()
-    {
-        $this->userModel = new UserModel();
-        $this->requireAuth();
-    }
+require_once __DIR__ . '/../model/config.php';
+require_once __DIR__ . '/../model/UserModel.php';
 
-    private function requireAuth(): void
-    {
-        if (!SessionManager::isLoggedIn()) {
-            SessionManager::setFlash('error', 'Accès réservé. Veuillez vous connecter.');
-            header('Location: index.php?page=home');
-            exit;
-        }
-    }
+$model  = new UserModel($pdo);
+$action = $_GET['action'] ?? 'index';
 
-    // ── LIST ──────────────────────────────────────────────────
+// ── GUARDS ────────────────────────────────────────────────────
 
-    public function list(): void
-    {
-        $search  = trim($_GET['search'] ?? '');
-        $role    = $_GET['role'] ?? '';
-        $status  = $_GET['status'] ?? '';
-        $pageNum = max(1, (int)($_GET['p'] ?? 1));
-
-        $filtered = $this->userModel->search($search, $role, $status);
-        $paged    = $this->userModel->paginate($filtered, $pageNum);
-
-        $success = isset($_GET['success']);
-
-        $this->render('backoffice/list_users', [
-            'currentUser'  => SessionManager::getUser(),
-            'users'        => $paged['items'],
-            'total'        => $paged['total'],
-            'currentPage'  => $paged['currentPage'],
-            'totalPages'   => $paged['totalPages'],
-            'search'       => $search,
-            'roleFilter'   => $role,
-            'statusFilter' => $status,
-            'success'      => $success,
-            'errors'       => [],
-            'page'         => 'users',
-        ]);
-    }
-
-    // ── CREATE ────────────────────────────────────────────────
-
-    public function create(): void
-    {
-        $errors = [];
-        $data   = [];
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $errors = $this->validateForm($_POST);
-
-            if (empty($errors)) {
-                $this->userModel->createUser($_POST);
-                header('Location: index.php?action=list&success=1');
-                exit;
-            }
-            // Keep submitted values to repopulate form
-            $data = $_POST;
-        }
-
-        $this->render('backoffice/add_user', [
-            'currentUser' => SessionManager::getUser(),
-            'errors'      => $errors,
-            'data'        => $data,
-            'page'        => 'users',
-        ]);
-    }
-
-    // ── EDIT ──────────────────────────────────────────────────
-
-    public function edit(): void
-    {
-        $id     = (int)($_GET['id'] ?? 0);
-        $errors = [];
-        $user   = $this->userModel->findById($id);
-
-        if (!$user) {
-            SessionManager::setFlash('error', 'Utilisateur introuvable.');
-            header('Location: index.php?action=list');
-            exit;
-        }
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $errors = $this->validateForm($_POST);
-
-            if (empty($errors)) {
-                $this->userModel->updateUser($id, $_POST);
-                header('Location: index.php?action=list&success=1');
-                exit;
-            }
-            // Keep submitted values to repopulate form
-            $user = array_merge($user, $_POST);
-        }
-
-        $this->render('backoffice/edit_user', [
-            'currentUser' => SessionManager::getUser(),
-            'errors'      => $errors,
-            'user'        => $user,
-            'page'        => 'users',
-        ]);
-    }
-
-    // ── DELETE ────────────────────────────────────────────────
-
-    public function delete(): void
-    {
-        $id = (int)($_GET['id'] ?? 0);
-        $this->userModel->deleteUser($id);
-        header('Location: index.php?action=list&success=1');
+function checkAdmin(): void {
+    if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+        header('Location: index.php?ctrl=auth&action=login');
         exit;
     }
+}
 
-    // ── VALIDATION ────────────────────────────────────────────
-
-    /**
-     * Server-side validation — mirrors validate.js rules exactly.
-     * This is the security fallback when JS is disabled.
-     * Returns array of error messages; empty = valid.
-     */
-    private function validateForm(array $data): array
-    {
-        $errors   = [];
-        $nom      = trim($data['nom']      ?? '');
-        $prenom   = trim($data['prenom']   ?? '');
-        $email    = trim($data['email']    ?? '');
-        $password = trim($data['password'] ?? '');
-
-        // RULE 1: All fields required
-        if ($nom === '')      $errors[] = 'Le champ Nom est obligatoire.';
-        if ($prenom === '')   $errors[] = 'Le champ Prénom est obligatoire.';
-        if ($email === '')    $errors[] = 'Le champ Email est obligatoire.';
-        if ($password === '') $errors[] = 'Le champ Mot de passe est obligatoire.';
-
-        // RULE 2: Nom — letters only
-        if ($nom !== '' && !preg_match('/^[a-zA-ZÀ-ÿ]+$/u', $nom)) {
-            $errors[] = 'Le Nom doit contenir uniquement des lettres.';
-        }
-
-        // RULE 3: Prenom — letters only
-        if ($prenom !== '' && !preg_match('/^[a-zA-ZÀ-ÿ]+$/u', $prenom)) {
-            $errors[] = 'Le Prénom doit contenir uniquement des lettres.';
-        }
-
-        // RULE 4: Email must end with @gmail.com
-        if ($email !== '' && !preg_match('/^[a-zA-Z0-9._%+\-]+@gmail\.com$/', $email)) {
-            $errors[] = "L'email doit être au format exemple@gmail.com.";
-        }
-
-        // RULE 5: Password minimum 6 characters
-        if ($password !== '' && strlen($password) < 6) {
-            $errors[] = 'Le mot de passe doit contenir au moins 6 caractères.';
-        }
-
-        return $errors;
+function checkLogged(): void {
+    if (!isset($_SESSION['user_id'])) {
+        header('Location: index.php?ctrl=auth&action=login');
+        exit;
     }
+}
 
-    // ── RENDER ────────────────────────────────────────────────
+// ── VALIDATION — PHP pure, zéro HTML5 ────────────────────────
 
-    private function render(string $view, array $data): void
-    {
-        extract($data);
-        require_once __DIR__ . '/../view/' . $view . '.php';
-    }
+function valider(array $data, UserModel $model, int $excludeId = 0): array {
+    $errors   = [];
+    $nom      = trim($data['nom']      ?? '');
+    $prenom   = trim($data['prenom']   ?? '');
+    $mail     = trim($data['mail']     ?? '');
+    $password = trim($data['password'] ?? '');
+
+    if ($nom === '')      $errors['nom']      = "Ce champ est obligatoire.";
+    if ($prenom === '')   $errors['prenom']   = "Ce champ est obligatoire.";
+    if ($mail === '')     $errors['mail']     = "Ce champ est obligatoire.";
+    if ($password === '') $errors['password'] = "Ce champ est obligatoire.";
+
+    if (empty($errors['nom']) && !preg_match('/^[a-zA-ZÀ-ÿ\s\-]+$/u', $nom))
+        $errors['nom'] = "Le nom ne doit contenir que des lettres.";
+
+    if (empty($errors['prenom']) && !preg_match('/^[a-zA-ZÀ-ÿ\s\-]+$/u', $prenom))
+        $errors['prenom'] = "Le prénom ne doit contenir que des lettres.";
+
+    if (empty($errors['mail']) && !str_ends_with($mail, '@gmail.com'))
+        $errors['mail'] = "L'email doit se terminer par @gmail.com.";
+
+    if (empty($errors['mail']) && $model->mailExiste($mail, $excludeId))
+        $errors['mail'] = "Cet email est déjà utilisé.";
+
+    return $errors;
+}
+
+// Validation profil — password optionnel
+function validerProfil(array $data, UserModel $model, int $userId): array {
+    $errors = [];
+    $nom    = trim($data['nom']    ?? '');
+    $prenom = trim($data['prenom'] ?? '');
+    $mail   = trim($data['mail']   ?? '');
+
+    if ($nom === '')
+        $errors['nom'] = "Ce champ est obligatoire.";
+    elseif (!preg_match('/^[a-zA-ZÀ-ÿ\s\-]+$/u', $nom))
+        $errors['nom'] = "Le nom ne doit contenir que des lettres.";
+
+    if ($prenom === '')
+        $errors['prenom'] = "Ce champ est obligatoire.";
+    elseif (!preg_match('/^[a-zA-ZÀ-ÿ\s\-]+$/u', $prenom))
+        $errors['prenom'] = "Le prénom ne doit contenir que des lettres.";
+
+    if ($mail === '')
+        $errors['mail'] = "Ce champ est obligatoire.";
+    elseif (!str_ends_with($mail, '@gmail.com'))
+        $errors['mail'] = "L'email doit se terminer par @gmail.com.";
+    elseif ($model->mailExiste($mail, $userId))
+        $errors['mail'] = "Cet email est déjà utilisé.";
+
+    return $errors;
+}
+
+function sessionUser(): array {
+    return [
+        'initials' => strtoupper(substr($_SESSION['nom'] ?? 'U', 0, 2)),
+        'name'     => $_SESSION['nom']  ?? '',
+        'role'     => $_SESSION['role'] ?? '',
+        'color'    => '#6C3FC5',
+    ];
+}
+
+// ── ROUTER ────────────────────────────────────────────────────
+
+switch ($action) {
+
+    // LIST — admin only
+    case 'index':
+        checkAdmin();
+        $users        = $model->getAll();
+        $total        = count($users);
+        $totalPages   = 1;
+        $currentPage  = 1;
+        $search       = '';
+        $roleFilter   = '';
+        $statusFilter = '';
+        $page         = 'users';
+        $currentUser  = sessionUser();
+        require_once __DIR__ . '/../view/backoffice/list.php';
+        break;
+
+    // DASHBOARD — admin only
+    case 'dashboard':
+        checkAdmin();
+        $all         = $model->getAll();
+        $totalUsers  = count($all);
+        $totalAdmins = count(array_filter($all, fn($u) => $u['role'] === 'admin'));
+        $page        = 'dashboard';
+        $currentUser = sessionUser();
+        require_once __DIR__ . '/../view/backoffice/dashboard.php';
+        break;
+
+    // SHOW ADD FORM — admin only
+    case 'create':
+        checkAdmin();
+        $errors      = [];
+        $old         = [];
+        $page        = 'users';
+        $currentUser = sessionUser();
+        require_once __DIR__ . '/../view/backoffice/form_add.php';
+        break;
+
+    // PROCESS ADD — admin only
+    case 'store':
+        checkAdmin();
+        $errors = valider($_POST, $model);
+        if (empty($errors)) {
+            $model->insert($_POST);
+            header('Location: index.php?ctrl=user&action=index&success=ajout');
+            exit;
+        }
+        $old         = $_POST;
+        $page        = 'users';
+        $currentUser = sessionUser();
+        require_once __DIR__ . '/../view/backoffice/form_add.php';
+        break;
+
+    // SHOW EDIT FORM — admin only
+    case 'edit':
+        checkAdmin();
+        $errors = [];
+        $item   = $model->getById((int)($_GET['id'] ?? 0));
+        if (!$item) {
+            header('Location: index.php?ctrl=user&action=index');
+            exit;
+        }
+        $page        = 'users';
+        $currentUser = sessionUser();
+        require_once __DIR__ . '/../view/backoffice/form_edit.php';
+        break;
+
+    // PROCESS EDIT — admin only
+    case 'update':
+        checkAdmin();
+        $id     = (int)($_GET['id'] ?? 0);
+        $errors = valider($_POST, $model, $id);
+        if (empty($errors)) {
+            $model->update($id, $_POST);
+            header('Location: index.php?ctrl=user&action=index&success=modif');
+            exit;
+        }
+        $item        = array_merge($_POST, ['id' => $id]);
+        $page        = 'users';
+        $currentUser = sessionUser();
+        require_once __DIR__ . '/../view/backoffice/form_edit.php';
+        break;
+
+    // DELETE — admin only
+    case 'delete':
+        checkAdmin();
+        $model->delete((int)($_GET['id'] ?? 0));
+        header('Location: index.php?ctrl=user&action=index&success=suppression');
+        exit;
+
+    // REGISTER — public
+    case 'register':
+        $errors = [];
+        $old    = [];
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $errors = valider($_POST, $model);
+            if (empty($errors)) {
+                $model->insert($_POST);
+                $_SESSION['success'] = "Compte créé avec succès ! Connectez-vous.";
+                header('Location: index.php?ctrl=auth&action=login');
+                exit;
+            }
+            $old = $_POST;
+        }
+        require_once __DIR__ . '/../view/frontoffice/register.php';
+        break;
+
+    // PROFILE — any logged-in user
+    case 'profile':
+        checkLogged();
+        $errors  = [];
+        $profile = $model->getById((int)$_SESSION['user_id']);
+        if (!$profile) {
+            header('Location: index.php?ctrl=auth&action=login');
+            exit;
+        }
+        $item        = $profile;
+        $page        = 'profile';
+        $currentUser = sessionUser();
+        require_once __DIR__ . '/../view/backoffice/profile.php';
+        break;
+
+    // UPDATE PROFILE — any logged-in user
+    case 'updateProfile':
+        checkLogged();
+        $userId = (int)$_SESSION['user_id'];
+        $errors = validerProfil($_POST, $model, $userId);
+        if (empty($errors)) {
+            $model->updateProfile($userId, $_POST);
+            $_SESSION['nom']     = trim($_POST['nom']);
+            $_SESSION['mail']    = trim($_POST['mail']);
+            $_SESSION['success'] = "Profil mis à jour avec succès.";
+            header('Location: index.php?ctrl=user&action=profile');
+            exit;
+        }
+        $item        = array_merge($_POST, ['id' => $userId]);
+        $profile     = $item;
+        $page        = 'profile';
+        $currentUser = sessionUser();
+        require_once __DIR__ . '/../view/backoffice/profile.php';
+        break;
+
+    // DELETE OWN ACCOUNT — non-admin only
+    case 'deleteOwn':
+        checkLogged();
+        if ($_SESSION['role'] === 'admin') {
+            header('Location: index.php?ctrl=user&action=profile');
+            exit;
+        }
+        $model->delete((int)$_SESSION['user_id']);
+        session_unset();
+        session_destroy();
+        header('Location: index.php?ctrl=auth&action=login');
+        exit;
+
+    default:
+        header('Location: index.php?ctrl=auth&action=login');
+        exit;
 }

@@ -1,86 +1,52 @@
 <?php
-/**
- * CreatorSpace — AuthController
- * REFACTOR: Controller is now a pure intermediary.
- * FIX: All validation logic moved to AuthModel::validateLogin() / validateRegister().
- * FIX: Session management delegated to SessionManager (not AuthModel).
- * FIX: Controller only: receives request → calls Model → redirects.
- */
-class AuthController
-{
-    private AuthModel $authModel;
+// controller/AuthController.php — no HTML, no SQL
+// session_start() géré dans index.php — pas de doublon ici
 
-    public function __construct()
-    {
-        $this->authModel = new AuthModel();
-    }
+require_once __DIR__ . '/../model/config.php';
+require_once __DIR__ . '/../model/UserModel.php';
 
-    public function login(): void
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: index.php?page=home');
-            exit;
-        }
+$model  = new UserModel($pdo);
+$action = $_GET['action'] ?? 'login';
 
-        $email    = trim($_POST['email'] ?? '');
-        $password = $_POST['password'] ?? '';
+switch ($action) {
 
-        // FIX: Validation delegated to Model — no business logic in Controller.
-        $errors = $this->authModel->validateLogin($email, $password);
-        if (!empty($errors)) {
-            SessionManager::setFlash('error', $errors[0]);
-            header('Location: index.php?page=home');
-            exit;
-        }
+    case 'login':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $mail     = trim($_POST['mail']     ?? '');
+            $password = trim($_POST['password'] ?? '');
+            $user     = $model->getByMail($mail);
 
-        $user = $this->authModel->authenticate($email, $password);
-        if ($user) {
-            // FIX: Session set via SessionManager, not AuthModel.
-            SessionManager::setUser($user);
-            SessionManager::setFlash('success', 'Bienvenue, ' . htmlspecialchars($user['name']) . ' 👋');
-            header('Location: index.php?page=profile');
+            if ($user && md5($password) === $user['password']) {
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['nom']     = $user['nom'];
+                $_SESSION['role']    = $user['role'];
+                $_SESSION['mail']    = $user['mail'];
+
+                if ($user['role'] === 'admin') {
+                    header('Location: index.php?ctrl=user&action=dashboard');
+                } else {
+                    header('Location: index.php?ctrl=user&action=profile');
+                }
+                exit;
+            }
+
+            $error = "Email ou mot de passe incorrect.";
+            require_once __DIR__ . '/../view/auth/login.php';
+
         } else {
-            SessionManager::setFlash('error', 'Email ou mot de passe incorrect.');
-            header('Location: index.php?page=home');
+            $error = '';
+            require_once __DIR__ . '/../view/auth/login.php';
         }
+        break;
+
+    case 'logout':
+        session_unset();
+        session_destroy();
+        header('Location: index.php?ctrl=auth&action=login');
         exit;
-    }
 
-    public function register(): void
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: index.php?page=home');
-            exit;
-        }
-
-        $firstname = trim($_POST['firstname'] ?? '');
-        $lastname  = trim($_POST['lastname'] ?? '');
-        $email     = trim($_POST['email'] ?? '');
-        $password  = $_POST['password'] ?? '';
-        $type      = $_POST['account_type'] ?? 'creator';
-        $terms     = isset($_POST['terms']);
-
-        // FIX: Validation delegated to Model — no business logic in Controller.
-        $errors = $this->authModel->validateRegister($firstname, $lastname, $email, $password, $terms);
-        if (!empty($errors)) {
-            SessionManager::setFlash('error', $errors[0]);
-            header('Location: index.php?page=home');
-            exit;
-        }
-
-        // FIX: User creation delegated to Model (renamed from register() to createUser()).
-        $newUser = $this->authModel->createUser($firstname, $lastname, $email, $password, $type);
-        SessionManager::setUser($newUser);
-        SessionManager::setFlash('success', 'Compte créé avec succès ! ✨');
-        header('Location: index.php?page=home');
-        exit;
-    }
-
-    public function logout(): void
-    {
-        // FIX: Session destruction via SessionManager, not AuthModel.
-        SessionManager::destroy();
-        header('Location: index.php?page=home');
-        exit;
-    }
+    default:
+        $error = '';
+        require_once __DIR__ . '/../view/auth/login.php';
+        break;
 }

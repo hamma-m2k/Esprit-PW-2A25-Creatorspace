@@ -17,16 +17,19 @@
 <body>
 
 <?php
-/**
- * FIX: Flash message read via SessionManager — not raw $_SESSION access in view.
- * Views must not access superglobals directly.
- */
-$flash = SessionManager::getFlash();
+// Ensure SessionManager is available — required by BackController/FrontController
+if (!class_exists('SessionManager')) {
+    require_once __DIR__ . '/../../model/SessionManager.php';
+}
 
-/**
- * FIX: Active-state logic for nav moved from inline ternaries to PHP variables.
- * Views should receive ready-to-use booleans, not compute logic inline.
- */
+// Flash message — read from $_SESSION directly as fallback
+if (class_exists('SessionManager') && method_exists('SessionManager', 'getFlash')) {
+    $flash = SessionManager::getFlash();
+} else {
+    $flash = $_SESSION['flash'] ?? null;
+    unset($_SESSION['flash']);
+}
+
 $isFront = in_array($page ?? '', ['home', 'profile'], true);
 $isBack  = in_array($page ?? '', ['dashboard', 'users', 'profiles', 'roles', 'settings'], true);
 ?>
@@ -37,7 +40,7 @@ $isBack  = in_array($page ?? '', ['dashboard', 'users', 'profiles', 'roles', 'se
     <a href="index.php?page=home">
       <button class="<?= $isFront ? 'active' : '' ?>">🌐 Front Office</button>
     </a>
-    <a href="index.php?page=dashboard">
+    <a href="index.php?ctrl=user&action=index">
       <button class="<?= $isBack ? 'active' : '' ?>">⚙️ Back Office</button>
     </a>
   </div>
@@ -49,7 +52,7 @@ $isBack  = in_array($page ?? '', ['dashboard', 'users', 'profiles', 'roles', 'se
         </div>
         <span><?= htmlspecialchars($currentUser['name']) ?></span>
       </div>
-      <a href="index.php?page=logout">
+      <a href="index.php?ctrl=auth&action=logout">
         <button class="btn btn-sm btn-outline">Déconnexion</button>
       </a>
     <?php endif; ?>

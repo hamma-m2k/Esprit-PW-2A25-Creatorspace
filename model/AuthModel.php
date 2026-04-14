@@ -16,8 +16,9 @@ class AuthModel
      */
     public function authenticate(string $email, string $password): ?array
     {
-        $userModel = new UserModel();
-        $user = $userModel->findByEmail($email);
+        // AuthModel is legacy — new auth uses AuthController directly with UserModel($pdo)
+        return null;
+    }
 
         if (!$user) {
             return null;

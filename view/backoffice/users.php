@@ -58,28 +58,27 @@ require_once __DIR__ . '/layout_back.php';
                   <td><input type="checkbox" style="width:auto;" /></td>
                   <td>
                     <div class="user-cell">
-                      <div class="user-mini-avatar" style="background:<?= htmlspecialchars($u['color']) ?>">
-                        <?= htmlspecialchars($u['initials']) ?>
+                      <div class="user-mini-avatar" style="background:<?= htmlspecialchars($u['color'] ?? '#6C3FC5') ?>">
+                        <?= htmlspecialchars($u['initials'] ?? strtoupper(substr($u['nom'],0,1).substr($u['prenom'],0,1))) ?>
                       </div>
-                      <span class="user-name"><?= htmlspecialchars($u['name']) ?></span>
+                      <span class="user-name"><?= htmlspecialchars($u['nom'].' '.$u['prenom']) ?></span>
                     </div>
                   </td>
-                  <td><?= htmlspecialchars($u['email']) ?></td>
+                  <td><?= htmlspecialchars($u['mail']) ?></td>
                   <td><span class="role-badge"><?= htmlspecialchars($u['role']) ?></span></td>
                   <td>
-                    <?php
-                    /* FIX: Status mapping delegated to UserModel static helpers — not computed in view. */
-                    $sClass = UserModel::statusClass($u['status']);
-                    $sLabel = UserModel::statusLabel($u['status']);
-                    ?>
-                    <span class="status-badge <?= $sClass ?>"><?= $sLabel ?></span>
+                    <span class="status-badge status-active">● Actif</span>
                   </td>
-                  <td><?= htmlspecialchars($u['date']) ?></td>
+                  <td><?= $u['id'] ?></td>
                   <td>
                     <div class="table-actions">
-                      <button class="action-btn" title="Voir" onclick="viewUser(<?= (int)$u['id'] ?>)">👁</button>
-                      <button class="action-btn" title="Modifier" onclick="showToast('Modification…','info')">✏️</button>
-                      <button class="action-btn del" title="Supprimer" onclick="confirmDelete(<?= (int)$u['id'] ?>)">🗑</button>
+                      <a href="index.php?ctrl=user&action=edit&id=<?= (int)$u['id'] ?>">
+                        <button class="action-btn" title="Modifier">✏️</button>
+                      </a>
+                      <a href="index.php?ctrl=user&action=delete&id=<?= (int)$u['id'] ?>"
+                         onclick="return window.confirm('Confirmer la suppression ?')">
+                        <button class="action-btn del" title="Supprimer">🗑</button>
+                      </a>
                     </div>
                   </td>
                 </tr>

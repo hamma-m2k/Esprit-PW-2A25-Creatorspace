@@ -11,8 +11,8 @@
         <h1>Crée. Publie.<br/>Monétise.</h1>
         <p>CreatorSpace réunit créateurs de contenu et marques dans un espace unique. Gérez votre présence, développez votre audience et monétisez votre passion.</p>
         <div class="hero-ctas">
-          <a href="index.php?page=profile"><button class="btn btn-primary">👤 Voir un profil</button></a>
-          <button class="btn btn-outline" onclick="document.getElementById('auth-section').scrollIntoView({behavior:'smooth'})">🚀 Commencer gratuitement</button>
+          <a href="index.php?ctrl=user&action=profile"><button class="btn btn-primary">👤 Voir un profil</button></a>
+          <button class="btn btn-outline" onclick="window.location='index.php?ctrl=user&action=register'">🚀 Commencer gratuitement</button>
         </div>
         <div class="hero-stats">
           <div class="hero-stat"><strong>12K+</strong><span>Créateurs</span></div>
