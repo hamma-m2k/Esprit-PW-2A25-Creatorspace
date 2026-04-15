@@ -80,7 +80,20 @@
 
       </form>
 
-      <p style="text-align:center; color:var(--text3); font-size:0.78rem; margin-top:20px;">
+      <?php if (!empty($success)): ?>
+      <div style="background:rgba(56,161,105,0.12); border:1px solid var(--success);
+                  color:var(--success); border-radius:var(--radius-sm);
+                  padding:12px 14px; font-size:0.88rem; margin-top:16px; text-align:center;">
+        <?= htmlspecialchars($success) ?>
+      </div>
+      <?php endif; ?>
+
+      <p style="text-align:center; color:var(--text3); font-size:0.85rem; margin-top:20px;">
+        Pas encore de compte ?
+        <a href="index.php?ctrl=auth&action=register" class="link-accent">S'inscrire</a>
+      </p>
+
+      <p style="text-align:center; color:var(--text3); font-size:0.78rem; margin-top:12px;">
         Seul l'administrateur accède au back office.
       </p>
     </div>

@@ -68,64 +68,45 @@
           <button class="auth-tab" onclick="switchAuthTab('register')">Inscription</button>
         </div>
 
-        <!-- LOGIN -->
+        <!-- LOGIN — redirige vers la vraie page login -->
         <div class="auth-form active" id="tab-login">
           <h2>Bon retour 👋</h2>
           <p class="auth-sub">Connectez-vous à votre espace créateur</p>
-          <form method="POST" action="index.php?page=login">
+          <form method="POST" action="index.php?ctrl=auth&action=login">
             <div class="form-group">
-              <label>Adresse email</label>
+              <label>Adresse mail</label>
               <div class="input-icon-wrap">
                 <span class="input-icon">✉️</span>
-                <input type="email" name="email" placeholder="vous@exemple.com" value="sophie.martin@gmail.com" required />
+                <!-- type="text" — NO type="email", NO required -->
+                <input type="text" name="mail" placeholder="exemple@gmail.com" />
               </div>
             </div>
             <div class="form-group">
               <label>Mot de passe</label>
               <div class="input-icon-wrap">
                 <span class="input-icon">🔒</span>
-                <input type="password" name="password" placeholder="••••••••" value="password123" required />
+                <input type="password" name="password" placeholder="••••" />
               </div>
             </div>
             <button type="submit" class="btn btn-primary w-full">Se connecter →</button>
           </form>
-          <p class="auth-switch">Pas encore de compte ? <a href="#" class="link-accent" onclick="switchAuthTab('register');return false;">S'inscrire gratuitement</a></p>
+          <p class="auth-switch">Pas encore de compte ? <a href="index.php?ctrl=auth&action=register" class="link-accent">S'inscrire gratuitement</a></p>
         </div>
 
-        <!-- REGISTER -->
+        <!-- REGISTER — redirige vers la vraie page inscription -->
         <div class="auth-form" id="tab-register">
           <h2>Rejoignez-nous ✨</h2>
           <p class="auth-sub">Créez votre compte en quelques secondes</p>
-          <form method="POST" action="index.php?page=register">
+          <form method="POST" action="index.php?ctrl=auth&action=register">
             <div class="form-row-2">
-              <div class="form-group"><label>Prénom</label><input type="text" name="firstname" placeholder="Sophie" required /></div>
-              <div class="form-group"><label>Nom</label><input type="text" name="lastname" placeholder="Martin" required /></div>
+              <!-- NO required, NO pattern, NO type="email" -->
+              <div class="form-group"><label>Nom</label><input type="text" name="nom" placeholder="Marzougui" /></div>
+              <div class="form-group"><label>Prénom</label><input type="text" name="prenom" placeholder="Mohamed" /></div>
             </div>
-            <div class="form-group"><label>Adresse email</label><input type="email" name="email" placeholder="vous@exemple.com" required /></div>
+            <div class="form-group"><label>Adresse mail</label><input type="text" name="mail" placeholder="exemple@gmail.com" /></div>
             <div class="form-group">
               <label>Mot de passe</label>
-              <input type="password" name="password" placeholder="Minimum 8 caractères" oninput="updatePasswordStrength(this.value)" required />
-              <div class="password-strength"><div class="pwd-bar" id="pwd-bar"></div></div>
-              <span class="pwd-label" id="pwd-label"></span>
-            </div>
-            <div class="form-group">
-              <label>Type de compte</label>
-              <div class="account-type-selector">
-                <label class="account-type active" id="type-creator">
-                  <input type="radio" name="account_type" value="creator" checked style="display:none;" />
-                  <span class="type-icon">🎨</span><span class="type-label">Créateur</span><span class="type-desc">Publiez du contenu</span>
-                </label>
-                <label class="account-type" id="type-brand">
-                  <input type="radio" name="account_type" value="brand" style="display:none;" />
-                  <span class="type-icon">🏢</span><span class="type-label">Marque</span><span class="type-desc">Trouvez des créateurs</span>
-                </label>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="checkbox-label">
-                <input type="checkbox" name="terms" required />
-                J'accepte les <a href="#" class="link-accent">conditions d'utilisation</a>
-              </label>
+              <input type="password" name="password" placeholder="••••••••" />
             </div>
             <button type="submit" class="btn btn-primary w-full">Créer mon compte →</button>
           </form>

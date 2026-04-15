@@ -97,6 +97,44 @@ class UserModel {
         $stmt->execute([$id]);
     }
 
+    // ── Statistics methods ────────────────────────────────────
+
+    public function countAll(): int {
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM `user`");
+        $stmt->execute();
+        return (int)$stmt->fetchColumn();
+    }
+
+    public function countByRole(string $role): int {
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM `user` WHERE `role` = ?");
+        $stmt->execute([$role]);
+        return (int)$stmt->fetchColumn();
+    }
+
+    public function countNewThisMonth(): int {
+        // Requires created_at column — run: ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT COUNT(*) FROM `user`
+                 WHERE MONTH(created_at) = MONTH(NOW())
+                 AND YEAR(created_at) = YEAR(NOW())"
+            );
+            $stmt->execute();
+            return (int)$stmt->fetchColumn();
+        } catch (\PDOException $e) {
+            return 0; // fallback if created_at column doesn't exist yet
+        }
+    }
+
+    public function getLastFive(): array {
+        $stmt = $this->pdo->prepare(
+            "SELECT id, nom, prenom, mail, role FROM `user`
+             ORDER BY id DESC LIMIT 5"
+        );
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
     // ── Helpers for BackController (original CreatorSpace) ────
 
     public function findById(int $id): array|false {

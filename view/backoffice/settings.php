@@ -6,7 +6,7 @@
           <div class="settings-card">
             <h4>🌐 Général</h4>
             <div class="form-group"><label>Nom de la plateforme</label><input type="text" value="CreatorSpace" /></div>
-            <div class="form-group"><label>Email de contact</label><input type="email" value="admin@creatorspace.fr" /></div>
+            <div class="form-group"><label>Email de contact</label><input type="text" value="admin@creatorspace.fr" /></div>
             <div class="form-group"><label>Langue par défaut</label>
               <select><option>Français</option><option>English</option></select>
             </div>

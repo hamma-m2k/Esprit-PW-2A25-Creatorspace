@@ -10,9 +10,6 @@
         <?= count($users) ?> utilisateur(s) enregistré(s)
       </p>
     </div>
-    <a href="index.php?ctrl=user&action=create">
-      <button class="btn btn-primary btn-sm">➕ Ajouter</button>
-    </a>
   </div>
 
   <?php if (isset($_GET['success'])): ?>
@@ -62,16 +59,18 @@
             </td>
             <td>
               <div class="table-actions">
-                <a href="index.php?ctrl=user&action=edit&id=<?= (int)$u['id'] ?>">
-                  <button class="action-btn" title="Modifier"
-                          style="color:var(--accent); border-color:var(--accent);">
-                    ✏️
+                <a href="index.php?ctrl=user&action=detail&id=<?= (int)$u['id'] ?>">
+                  <button class="action-btn" title="Voir détail"
+                          style="color:var(--secondary); border-color:var(--secondary);">
+                    👁️
                   </button>
                 </a>
+                <?php if ((int)$u['id'] !== (int)($_SESSION['user_id'] ?? 0)): ?>
                 <a href="index.php?ctrl=user&action=delete&id=<?= (int)$u['id'] ?>"
                    onclick="return window.confirm('Confirmer la suppression de cet utilisateur ?')">
                   <button class="action-btn del" title="Supprimer">🗑️</button>
                 </a>
+                <?php endif; ?>
               </div>
             </td>
           </tr>

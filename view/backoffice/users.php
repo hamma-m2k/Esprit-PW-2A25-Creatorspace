@@ -111,7 +111,7 @@ require_once __DIR__ . '/layout_back.php';
       <div class="form-group"><label>Prénom</label><input type="text" placeholder="Jean" /></div>
       <div class="form-group"><label>Nom</label><input type="text" placeholder="Dupont" /></div>
     </div>
-    <div class="form-group"><label>Email</label><input type="email" placeholder="jean@exemple.com" /></div>
+    <div class="form-group"><label>Email</label><input type="text" placeholder="jean@exemple.com" /></div>
     <div class="form-group"><label>Rôle</label>
       <select><option>Créateur</option><option>Creator Pro</option><option>Marque</option></select>
     </div>

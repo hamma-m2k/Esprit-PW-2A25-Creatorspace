@@ -111,73 +111,36 @@ switch ($action) {
     // DASHBOARD — admin only
     case 'dashboard':
         checkAdmin();
-        $all         = $model->getAll();
-        $totalUsers  = count($all);
-        $totalAdmins = count(array_filter($all, fn($u) => $u['role'] === 'admin'));
+        $stats = [
+            'total'     => $model->countAll(),
+            'admins'    => $model->countByRole('admin'),
+            'users'     => $model->countByRole('user'),
+            'new_month' => $model->countNewThisMonth(),
+        ];
+        $lastUsers   = $model->getLastFive();
         $page        = 'dashboard';
         $currentUser = sessionUser();
         require_once __DIR__ . '/../view/backoffice/dashboard.php';
         break;
 
-    // SHOW ADD FORM — admin only
+    // BLOCKED — admin cannot add or edit other users
     case 'create':
-        checkAdmin();
-        $errors      = [];
-        $old         = [];
-        $page        = 'users';
-        $currentUser = sessionUser();
-        require_once __DIR__ . '/../view/backoffice/form_add.php';
-        break;
-
-    // PROCESS ADD — admin only
     case 'store':
-        checkAdmin();
-        $errors = valider($_POST, $model);
-        if (empty($errors)) {
-            $model->insert($_POST);
-            header('Location: index.php?ctrl=user&action=index&success=ajout');
-            exit;
-        }
-        $old         = $_POST;
-        $page        = 'users';
-        $currentUser = sessionUser();
-        require_once __DIR__ . '/../view/backoffice/form_add.php';
-        break;
-
-    // SHOW EDIT FORM — admin only
     case 'edit':
+    case 'update':
         checkAdmin();
-        $errors = [];
-        $item   = $model->getById((int)($_GET['id'] ?? 0));
-        if (!$item) {
+        header('Location: index.php?ctrl=user&action=index');
+        exit;
+
+    // DELETE — admin only, cannot delete self
+    case 'delete':
+        checkAdmin();
+        $id = (int)($_GET['id'] ?? 0);
+        if ($id === (int)$_SESSION['user_id']) {
             header('Location: index.php?ctrl=user&action=index');
             exit;
         }
-        $page        = 'users';
-        $currentUser = sessionUser();
-        require_once __DIR__ . '/../view/backoffice/form_edit.php';
-        break;
-
-    // PROCESS EDIT — admin only
-    case 'update':
-        checkAdmin();
-        $id     = (int)($_GET['id'] ?? 0);
-        $errors = valider($_POST, $model, $id);
-        if (empty($errors)) {
-            $model->update($id, $_POST);
-            header('Location: index.php?ctrl=user&action=index&success=modif');
-            exit;
-        }
-        $item        = array_merge($_POST, ['id' => $id]);
-        $page        = 'users';
-        $currentUser = sessionUser();
-        require_once __DIR__ . '/../view/backoffice/form_edit.php';
-        break;
-
-    // DELETE — admin only
-    case 'delete':
-        checkAdmin();
-        $model->delete((int)($_GET['id'] ?? 0));
+        $model->delete($id);
         header('Location: index.php?ctrl=user&action=index&success=suppression');
         exit;
 
