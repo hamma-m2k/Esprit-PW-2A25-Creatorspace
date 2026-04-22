@@ -72,7 +72,7 @@
                     👁️
                   </button>
                 </a>
-                <?php if ((int)$u['id'] !== (int)($_SESSION['user_id'] ?? 0)): ?>
+                <?php if ((int)$u['id'] !== (int)($currentUserId ?? 0)): ?>
                 <a href="index.php?ctrl=user&action=delete&id=<?= (int)$u['id'] ?>"
                    onclick="return window.confirm('Confirmer la suppression de cet utilisateur ?')">
                   <button class="action-btn del" title="Supprimer">🗑️</button>

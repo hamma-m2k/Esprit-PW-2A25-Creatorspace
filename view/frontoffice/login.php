@@ -41,6 +41,15 @@
       </div>
       <?php endif; ?>
 
+      <?php if (!empty($msgRegister)): ?>
+      <div style="background:rgba(56,161,105,0.12); border:1px solid var(--success);
+                  color:var(--success); border-radius:var(--radius-sm);
+                  padding:12px 14px; font-size:0.88rem; margin-bottom:20px;
+                  text-align:center;">
+        <?= htmlspecialchars($msgRegister) ?>
+      </div>
+      <?php endif; ?>
+
       <?php if (isset($_GET['error']) && $_GET['error'] === 'access'): ?>
       <div style="background:rgba(229,62,62,0.12); border:1px solid var(--danger);
                   color:var(--danger); border-radius:var(--radius-sm);

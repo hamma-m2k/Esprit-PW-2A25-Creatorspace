@@ -1,5 +1,11 @@
 <?php
-// model/UserModel.php — pure data layer, no HTML, no echo
+/**
+ * UserModel.php — Couche d'accès aux données pour la table `user`
+ * Utilise l'entité User (attributs, constructeur, getters/setters)
+ * Aucun HTML, aucun echo, aucune logique métier ici.
+ */
+
+require_once __DIR__ . '/Entity.php';
 
 class UserModel {
 
@@ -9,93 +15,155 @@ class UserModel {
         $this->pdo = $pdo;
     }
 
+    // ── Lecture ───────────────────────────────────────────────
+
+    /** Retourne tous les utilisateurs sous forme de tableaux (pour les vues) */
     public function getAll(): array {
-        $stmt = $this->pdo->prepare("SELECT id, nom, prenom, mail, role FROM user");
+        $stmt = $this->pdo->prepare(
+            "SELECT id, nom, prenom, mail, role, type_compte, social_media_link FROM `user`"
+        );
         $stmt->execute();
         return $stmt->fetchAll();
     }
 
-    public function getById(int $id): array|false {
-        $stmt = $this->pdo->prepare("SELECT * FROM user WHERE id = ?");
+    /** Retourne un User par son ID */
+    public function getById(int $id): ?User {
+        $stmt = $this->pdo->prepare("SELECT * FROM `user` WHERE id = ?");
         $stmt->execute([$id]);
-        return $stmt->fetch();
+        $row = $stmt->fetch();
+        return $row ? User::fromArray($row) : null;
     }
 
-    public function getByMail(string $mail): array|false {
-        $stmt = $this->pdo->prepare("SELECT * FROM user WHERE mail = ? LIMIT 1");
+    /** Retourne un User par son mail */
+    public function getByMail(string $mail): ?User {
+        $stmt = $this->pdo->prepare(
+            "SELECT * FROM `user` WHERE mail = ? LIMIT 1"
+        );
         $stmt->execute([$mail]);
-        return $stmt->fetch();
+        $row = $stmt->fetch();
+        return $row ? User::fromArray($row) : null;
     }
 
-    public function insert(array $data): int {
-        $stmt = $this->pdo->prepare(
-            "INSERT INTO `user` (nom, prenom, mail, `password`, role, type_compte)
-             VALUES (?, ?, ?, MD5(?), 'user', ?)"
-        );
-        $stmt->execute([
-            trim($data['nom']),
-            trim($data['prenom']),
-            trim($data['mail']),
-            trim($data['password']),
-            trim($data['type_compte'] ?? 'user')
-        ]);
-        return (int)$this->pdo->lastInsertId();
-    }
-
-    public function update(int $id, array $data): void {
-        $stmt = $this->pdo->prepare(
-            "UPDATE `user` SET nom=?, prenom=?, mail=?, role=?, type_compte=? WHERE id=?"
-        );
-        $stmt->execute([
-            trim($data['nom']),
-            trim($data['prenom']),
-            trim($data['mail']),
-            $data['role']        ?? 'user',
-            $data['type_compte'] ?? 'user',
-            $id
-        ]);
-    }
-
-    public function updateProfile(int $id, array $data): void {
-        if (!empty(trim($data['password'] ?? ''))) {
-            $stmt = $this->pdo->prepare(
-                "UPDATE `user` SET nom=?, prenom=?, mail=?, `password`=MD5(?), type_compte=? WHERE id=?"
-            );
-            $stmt->execute([
-                trim($data['nom']),
-                trim($data['prenom']),
-                trim($data['mail']),
-                trim($data['password']),
-                trim($data['type_compte'] ?? 'user'),
-                $id
-            ]);
-        } else {
-            $stmt = $this->pdo->prepare(
-                "UPDATE `user` SET nom=?, prenom=?, mail=?, type_compte=? WHERE id=?"
-            );
-            $stmt->execute([
-                trim($data['nom']),
-                trim($data['prenom']),
-                trim($data['mail']),
-                trim($data['type_compte'] ?? 'user'),
-                $id
-            ]);
-        }
-    }
-
-    // mailExiste() — vérifie unicité email, exclut l'id courant en édition
+    /** Vérifie si un mail existe déjà (exclut l'id courant en édition) */
     public function mailExiste(string $mail, int $excludeId = 0): bool {
         $stmt = $this->pdo->prepare(
-            "SELECT id FROM user WHERE mail = ? AND id != ?"
+            "SELECT id FROM `user` WHERE mail = ? AND id != ?"
         );
         $stmt->execute([$mail, $excludeId]);
         return $stmt->fetch() !== false;
     }
 
+    // ── Écriture ──────────────────────────────────────────────
+
+    /** Insère un nouvel utilisateur, retourne l'ID créé */
+    public function insert(array $data): int {
+        $user = new User(
+            0,
+            trim($data['nom']         ?? ''),
+            trim($data['prenom']      ?? ''),
+            trim($data['mail']        ?? ''),
+            trim($data['password']    ?? ''),
+            trim($data['role']        ?? 'user'),
+            trim($data['type_compte'] ?? 'user'),
+            trim($data['social_media_link'] ?? '')
+        );
+
+        $stmt = $this->pdo->prepare(
+            "INSERT INTO `user` (nom, prenom, mail, `password`, role, type_compte, social_media_link)
+             VALUES (?, ?, ?, MD5(?), ?, ?, ?)"
+        );
+        $stmt->execute([
+            $user->getNom(),
+            $user->getPrenom(),
+            $user->getMail(),
+            $user->getPassword(),
+            $user->getRole(),
+            $user->getTypeCompte(),
+            $user->getSocialMediaLink()
+        ]);
+        return (int)$this->pdo->lastInsertId();
+    }
+
+    /** Met à jour un utilisateur (admin — ne touche pas au password) */
+    public function update(int $id, array $data): void {
+        $user = new User(
+            $id,
+            trim($data['nom']         ?? ''),
+            trim($data['prenom']      ?? ''),
+            trim($data['mail']        ?? ''),
+            '',
+            $data['role']             ?? 'user',
+            $data['type_compte']      ?? 'user',
+            trim($data['social_media_link'] ?? '')
+        );
+
+        $stmt = $this->pdo->prepare(
+            "UPDATE `user` SET nom=?, prenom=?, mail=?, role=?, type_compte=?, social_media_link=?
+             WHERE id=?"
+        );
+        $stmt->execute([
+            $user->getNom(),
+            $user->getPrenom(),
+            $user->getMail(),
+            $user->getRole(),
+            $user->getTypeCompte(),
+            $user->getSocialMediaLink(),
+            $user->getId()
+        ]);
+    }
+
+    /** Met à jour le profil personnel (password optionnel) */
+    public function updateProfile(int $id, array $data): void {
+        $user = new User(
+            $id,
+            trim($data['nom']         ?? ''),
+            trim($data['prenom']      ?? ''),
+            trim($data['mail']        ?? ''),
+            trim($data['password']    ?? ''),
+            'user',
+            trim($data['type_compte'] ?? 'user'),
+            trim($data['social_media_link'] ?? '')
+        );
+
+        if ($user->getPassword() !== '') {
+            $stmt = $this->pdo->prepare(
+                "UPDATE `user`
+                 SET nom=?, prenom=?, mail=?, `password`=MD5(?), type_compte=?, social_media_link=?
+                 WHERE id=?"
+            );
+            $stmt->execute([
+                $user->getNom(),
+                $user->getPrenom(),
+                $user->getMail(),
+                $user->getPassword(),
+                $user->getTypeCompte(),
+                $user->getSocialMediaLink(),
+                $user->getId()
+            ]);
+        } else {
+            $stmt = $this->pdo->prepare(
+                "UPDATE `user`
+                 SET nom=?, prenom=?, mail=?, type_compte=?, social_media_link=?
+                 WHERE id=?"
+            );
+            $stmt->execute([
+                $user->getNom(),
+                $user->getPrenom(),
+                $user->getMail(),
+                $user->getTypeCompte(),
+                $user->getSocialMediaLink(),
+                $user->getId()
+            ]);
+        }
+    }
+
+    /** Supprime un utilisateur par son ID */
     public function delete(int $id): void {
-        $stmt = $this->pdo->prepare("DELETE FROM user WHERE id = ?");
+        $stmt = $this->pdo->prepare("DELETE FROM `user` WHERE id = ?");
         $stmt->execute([$id]);
     }
+
+    // ── Statistiques ──────────────────────────────────────────
 
     public function countAll(): int {
         $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM `user`");
@@ -104,13 +172,17 @@ class UserModel {
     }
 
     public function countByRole(string $role): int {
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM `user` WHERE `role` = ?");
+        $stmt = $this->pdo->prepare(
+            "SELECT COUNT(*) FROM `user` WHERE `role` = ?"
+        );
         $stmt->execute([$role]);
         return (int)$stmt->fetchColumn();
     }
 
     public function countByType(string $type): int {
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM `user` WHERE `type_compte` = ?");
+        $stmt = $this->pdo->prepare(
+            "SELECT COUNT(*) FROM `user` WHERE `type_compte` = ?"
+        );
         $stmt->execute([$type]);
         return (int)$stmt->fetchColumn();
     }
@@ -131,16 +203,16 @@ class UserModel {
 
     public function getLastFive(): array {
         $stmt = $this->pdo->prepare(
-            "SELECT id, nom, prenom, mail, role, type_compte
+            "SELECT id, nom, prenom, mail, role, type_compte, social_media_link
              FROM `user` ORDER BY id DESC LIMIT 5"
         );
         $stmt->execute();
         return $stmt->fetchAll();
     }
 
-    // ── Helpers for BackController (original CreatorSpace) ────
+    // ── Helpers pour BackController (CreatorSpace original) ───
 
-    public function findById(int $id): array|false {
+    public function findById(int $id): ?User {
         return $this->getById($id);
     }
 
@@ -163,19 +235,23 @@ class UserModel {
     }
 
     public function getCreators(): array {
-        $stmt = $this->pdo->prepare("SELECT * FROM user WHERE role != 'admin'");
+        $stmt = $this->pdo->prepare(
+            "SELECT * FROM `user` WHERE role != 'admin'"
+        );
         $stmt->execute();
         return $stmt->fetchAll();
     }
 
     public function getRoles(): array {
         return [
-            ['name'=>'admin','icon'=>'🔐','count'=>'1','color'=>'linear-gradient(135deg,#6C3FC5,#9B5DE5)',
+            ['name'=>'admin','icon'=>'🔐','count'=>'1',
+             'color'=>'linear-gradient(135deg,#6C3FC5,#9B5DE5)',
              'badge'=>'Admin','badge_class'=>'badge-pro',
-             'perms'=>[['label'=>'Accès complet','enabled'=>true],['label'=>'Gestion utilisateurs','enabled'=>true]]],
-            ['name'=>'user', 'icon'=>'👤','count'=>'4','color'=>'linear-gradient(135deg,#00C2CB,#00a8b0)',
+             'perms'=>[['label'=>'Accès complet','enabled'=>true]]],
+            ['name'=>'user', 'icon'=>'👤','count'=>'4',
+             'color'=>'linear-gradient(135deg,#00C2CB,#00a8b0)',
              'badge'=>'User', 'badge_class'=>'badge-verified',
-             'perms'=>[['label'=>'Accès profil','enabled'=>true],['label'=>'Gestion utilisateurs','enabled'=>false]]],
+             'perms'=>[['label'=>'Accès profil','enabled'=>true]]],
         ];
     }
 

@@ -27,6 +27,16 @@ require_once __DIR__ . '/../layout/header.php';
             <span class="sidebar-badge">12K</span>
           </button>
         </a>
+        <a href="index.php?ctrl=demande&action=liste">
+          <button class="sidebar-item <?= $page === 'demandes' ? 'active' : '' ?>">
+            <span class="sidebar-icon">📋</span><span>Demandes</span>
+            <?php if (!empty($demandesEnAttente) && (int)$demandesEnAttente > 0): ?>
+                <span class="sidebar-badge" style="background:rgba(229,62,62,0.2); color:var(--danger);">
+                  <?= (int)$demandesEnAttente ?>
+                </span>
+            <?php endif; ?>
+          </button>
+        </a>
         <a href="index.php?page=profiles">
           <button class="sidebar-item <?= $page === 'profiles' ? 'active' : '' ?>">
             <span class="sidebar-icon">🎨</span><span>Profils</span>

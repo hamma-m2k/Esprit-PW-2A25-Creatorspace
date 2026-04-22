@@ -7,7 +7,7 @@
     <div>
       <h2 style="font-size:1.6rem; color:var(--text);">📊 Dashboard</h2>
       <p style="color:var(--text3); font-size:0.9rem; margin-top:4px;">
-        Bienvenue, <?= htmlspecialchars($_SESSION['nom'] ?? 'Admin') ?> 👋
+        Bienvenue, <?= htmlspecialchars($nomAdmin ?? 'Admin') ?> 👋
       </p>
     </div>
   </div>
@@ -50,7 +50,7 @@
   </div>
 
   <!-- STAT CARDS — ligne 2 : par type de compte -->
-  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:32px;">
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:32px;">
 
     <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(14,116,144,0.4);
                 border-radius:16px; padding:1.5rem; text-align:center;">
@@ -76,6 +76,22 @@
       <div style="font-size:0.9rem; color:#94a3b8; margin-top:0.5rem;">👤 Utilisateurs normaux</div>
     </div>
 
+    <a href="index.php?ctrl=demande&action=liste" style="text-decoration:none;">
+      <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(229,62,62,0.4);
+                  border-radius:16px; padding:1.5rem; text-align:center;
+                  transition:transform 0.2s; cursor:pointer;"
+           onmouseover="this.style.transform='translateY(-3px)'"
+           onmouseout="this.style.transform='translateY(0)'">
+        <div style="font-size:2.5rem; font-weight:700; color:var(--danger); font-family:'Syne',sans-serif;">
+          <?= $stats['demandes_attente'] ?>
+        </div>
+        <div style="font-size:0.9rem; color:#94a3b8; margin-top:0.5rem;">📋 Demandes en attente</div>
+        <div style="font-size:0.75rem; color:var(--danger); margin-top:6px; font-weight:600;">
+          Voir les demandes →
+        </div>
+      </div>
+    </a>
+
   </div>
 
   <!-- QUICK ACTIONS -->
@@ -85,6 +101,9 @@
     <div style="display:flex; gap:12px; flex-wrap:wrap;">
       <a href="index.php?ctrl=user&action=index">
         <button class="btn btn-primary">👥 Gérer les utilisateurs</button>
+      </a>
+      <a href="index.php?ctrl=demande&action=liste">
+        <button class="btn btn-outline btn-sm">📋 Voir les demandes →</button>
       </a>
       <a href="index.php?ctrl=user&action=profile">
         <button class="btn btn-outline btn-sm">👤 Mon profil</button>

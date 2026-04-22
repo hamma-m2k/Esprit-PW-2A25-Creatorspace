@@ -1,5 +1,5 @@
 <?php
-// model/config.php — DB connection only, no HTML, no logic
+// Model/config.php — DB connection only, no HTML, no logic
 
 $host   = 'localhost';
 $dbname = 'creatorspace';

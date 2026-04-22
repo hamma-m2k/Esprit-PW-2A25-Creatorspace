@@ -82,6 +82,56 @@
           <?php endif; ?>
         </div>
 
+        <div style="margin-bottom:20px;">
+          <label style="display:block; color:var(--text2); font-size:0.85rem; margin-bottom:8px;">Type de compte</label>
+          <select name="type_compte" id="add_type_compte"
+                  style="width:100%; background:rgba(255,255,255,0.08);
+                         border:1px solid rgba(108,63,197,0.5); color:var(--text);
+                         border-radius:8px; padding:12px 14px; font-size:0.95rem; outline:none;">
+            <option value="" disabled <?= empty($old['type_compte']) ? 'selected' : '' ?>>-- Choisissez un type --</option>
+            <option value="user"     <?= ($old['type_compte'] ?? '') === 'user'     ? 'selected' : '' ?>>Utilisateur normal</option>
+            <option value="societe"  <?= ($old['type_compte'] ?? '') === 'societe'  ? 'selected' : '' ?>>Société</option>
+            <option value="createur" <?= ($old['type_compte'] ?? '') === 'createur' ? 'selected' : '' ?>>Créateur de contenu</option>
+          </select>
+          <?php if (!empty($errors['type_compte'])): ?>
+            <span style="color:#ff6b6b; font-size:0.8rem; margin-top:4px; display:block;">
+              <?= htmlspecialchars($errors['type_compte']) ?>
+            </span>
+          <?php endif; ?>
+        </div>
+
+        <!-- Bloc social media : visible SEULEMENT si type = "createur" -->
+        <div id="bloc_social_add"
+             style="display:<?= ($old['type_compte'] ?? '') === 'createur' ? 'block' : 'none' ?>;">
+
+          <div style="margin-bottom:20px;">
+            <label style="display:block; color:var(--text2); font-size:0.85rem; margin-bottom:8px;">Lien réseau social</label>
+            <input type="text" name="social_media_link" id="add_social_link"
+                   placeholder="https://www.instagram.com/moncompte"
+                   value="<?= htmlspecialchars($old['social_media_link'] ?? '') ?>"
+                   style="width:100%; background:rgba(255,255,255,0.08);
+                          border:1px solid rgba(108,63,197,0.5); color:var(--text);
+                          border-radius:8px; padding:12px 14px; font-size:0.95rem; outline:none;">
+            <?php if (!empty($errors['social_media_link'])): ?>
+              <span style="color:#ff6b6b; font-size:0.8rem; margin-top:4px; display:block;">
+                <?= htmlspecialchars($errors['social_media_link']) ?>
+              </span>
+            <?php endif; ?>
+          </div>
+
+        </div>
+
+        <script>
+          (function() {
+            var sel  = document.getElementById('add_type_compte');
+            var bloc = document.getElementById('bloc_social_add');
+            function toggle() {
+              bloc.style.display = (sel.value === 'createur') ? 'block' : 'none';
+            }
+            sel.onchange = toggle;
+          })();
+        </script>
+
         <div style="margin-bottom:28px;">
           <label style="display:block; color:var(--text2); font-size:0.85rem; margin-bottom:8px;">Rôle</label>
           <select name="role"

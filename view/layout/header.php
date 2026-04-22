@@ -19,7 +19,7 @@
 <?php
 // Ensure SessionManager is available — required by BackController/FrontController
 if (!class_exists('SessionManager')) {
-    require_once __DIR__ . '/../../model/SessionManager.php';
+    require_once __DIR__ . '/../../Model/SessionManager.php';
 }
 
 // Flash message — read from $_SESSION directly as fallback
