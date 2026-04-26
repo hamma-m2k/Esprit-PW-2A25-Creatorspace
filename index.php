@@ -23,7 +23,7 @@ switch ($ctrl) {
         break;
 
     case 'demande':
-        $allowed = ['liste', 'historique', 'accepter', 'refuser'];
+        $allowed = ['liste', 'accepter', 'refuser'];
         if (!in_array($action, $allowed, true)) {
             header('Location: index.php?ctrl=demande&action=liste');
             exit;

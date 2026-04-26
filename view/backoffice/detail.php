@@ -24,8 +24,8 @@ require_once __DIR__ . '/layout_back.php';
       <!-- AVATAR -->
       <?php
       $initiales = strtoupper(
-          substr($item['nom']    ?? 'U', 0, 1) .
-          substr($item['prenom'] ?? 'U', 0, 1)
+          substr($item->getNom()    ?: 'U', 0, 1) .
+          substr($item->getPrenom() ?: 'U', 0, 1)
       );
       ?>
       <div style="display:flex; align-items:center; gap:20px; margin-bottom:28px;">
@@ -38,10 +38,10 @@ require_once __DIR__ . '/layout_back.php';
         </div>
         <div>
           <div style="font-size:1.3rem; font-weight:700; color:var(--text);">
-            <?= htmlspecialchars($item['nom'] . ' ' . $item['prenom']) ?>
+            <?= htmlspecialchars($item->getNom() . ' ' . $item->getPrenom()) ?>
           </div>
           <div style="color:var(--text3); font-size:0.82rem; margin-top:4px;">
-            ID #<?= (int)$item['id'] ?>
+            ID #<?= $item->getId() ?>
           </div>
         </div>
       </div>
@@ -54,7 +54,7 @@ require_once __DIR__ . '/layout_back.php';
                     border-radius:8px; border:1px solid var(--border);">
           <span style="color:var(--text3); font-size:0.85rem;">Nom complet</span>
           <span style="color:var(--text); font-weight:600;">
-            <?= htmlspecialchars($item['nom'] . ' ' . $item['prenom']) ?>
+            <?= htmlspecialchars($item->getNom() . ' ' . $item->getPrenom()) ?>
           </span>
         </div>
 
@@ -63,7 +63,7 @@ require_once __DIR__ . '/layout_back.php';
                     border-radius:8px; border:1px solid var(--border);">
           <span style="color:var(--text3); font-size:0.85rem;">Email</span>
           <span style="color:var(--accent); font-size:0.9rem;">
-            <?= htmlspecialchars($item['mail']) ?>
+            <?= htmlspecialchars($item->getMail()) ?>
           </span>
         </div>
 
@@ -71,7 +71,7 @@ require_once __DIR__ . '/layout_back.php';
                     padding:12px 16px; background:rgba(255,255,255,0.04);
                     border-radius:8px; border:1px solid var(--border);">
           <span style="color:var(--text3); font-size:0.85rem;">Rôle</span>
-          <?php if ($item['role'] === 'admin'): ?>
+          <?php if ($item->getRole() === 'admin'): ?>
             <span class="badge badge-pro">Admin</span>
           <?php else: ?>
             <span class="badge badge-verified">User</span>
@@ -82,17 +82,17 @@ require_once __DIR__ . '/layout_back.php';
                     padding:12px 16px; background:rgba(255,255,255,0.04);
                     border-radius:8px; border:1px solid var(--border);">
           <span style="color:var(--text3); font-size:0.85rem;">ID</span>
-          <span style="color:var(--text2); font-size:0.9rem;">#<?= (int)$item['id'] ?></span>
+          <span style="color:var(--text2); font-size:0.9rem;">#<?= $item->getId() ?></span>
         </div>
 
       </div>
 
       <!-- ACTIONS -->
       <div style="display:flex; gap:12px; flex-wrap:wrap;">
-        <a href="index.php?ctrl=user&action=edit&id=<?= (int)$item['id'] ?>">
+        <a href="index.php?ctrl=user&action=edit&id=<?= $item->getId() ?>">
           <button class="btn btn-primary btn-sm">✏️ Modifier</button>
         </a>
-        <a href="index.php?ctrl=user&action=delete&id=<?= (int)$item['id'] ?>"
+        <a href="index.php?ctrl=user&action=delete&id=<?= $item->getId() ?>"
            onclick="return window.confirm('Supprimer cet utilisateur définitivement ?')">
           <button class="btn btn-sm"
                   style="background:rgba(229,62,62,0.15); color:var(--danger);

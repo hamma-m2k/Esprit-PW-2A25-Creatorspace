@@ -1,20 +1,16 @@
 <?php
 /**
  * EntityController — point unique : logique HTTP, validation, orchestration Model / View.
+ * Contient également toutes les requêtes (méthodes) de base de données comme demandé.
  */
 class EntityController
 {
-    private UserModel    $userModel;
-    private DemandeModel $demandeModel;
+    private PDO $pdo;
 
     public function __construct(PDO $pdo)
     {
         require_once __DIR__ . '/../Model/Entity.php';
-        require_once __DIR__ . '/../Model/UserModel.php';
-        require_once __DIR__ . '/../Model/DemandeModel.php';
-
-        $this->userModel    = new UserModel($pdo);
-        $this->demandeModel = new DemandeModel($pdo);
+        $this->pdo = $pdo;
     }
 
     private function redirectError(string $message): void
@@ -31,7 +27,178 @@ class EntityController
         $this->render('frontoffice/error', compact('message'));
     }
 
+    // ==========================================================
+    // MÉTHODES DE LOGIQUE DE BASE DE DONNÉES (USER & DEMANDE)
+    // ==========================================================
+
+    private function getAllUsers(): array {
+        $stmt = $this->pdo->prepare("SELECT id, nom, prenom, mail, role, type_compte, social_media_link, is_accepted FROM `user`");
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map(fn($r) => User::fromArray($r), $rows);
+    }
+
+    private function getUserById(int $id): ?User {
+        $stmt = $this->pdo->prepare("SELECT * FROM `user` WHERE id = ?");
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? User::fromArray($row) : null;
+    }
+
+    private function getUserByMail(string $mail): ?User {
+        $stmt = $this->pdo->prepare("SELECT * FROM `user` WHERE mail = ? LIMIT 1");
+        $stmt->execute([$mail]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? User::fromArray($row) : null;
+    }
+
+    private function userMailExiste(string $mail, int $excludeId = 0): bool {
+        $stmt = $this->pdo->prepare("SELECT id FROM `user` WHERE mail = ? AND id != ?");
+        $stmt->execute([$mail, $excludeId]);
+        return $stmt->fetch() !== false;
+    }
+
+    private function insertUser(User $user): int {
+        $stmt = $this->pdo->prepare(
+            "INSERT INTO `user` (nom, prenom, mail, `password`, role, type_compte, social_media_link, is_accepted)
+             VALUES (?, ?, ?, MD5(?), ?, ?, ?, ?)"
+        );
+        $stmt->execute([
+            $user->getNom(),
+            $user->getPrenom(),
+            $user->getMail(),
+            $user->getPassword(),
+            $user->getRole(),
+            $user->getTypeCompte(),
+            $user->getSocialMediaLink(),
+            $user->getIsAccepted() ? 1 : 0
+        ]);
+        return (int)$this->pdo->lastInsertId();
+    }
+
+    private function updateUser(User $user): void {
+        $stmt = $this->pdo->prepare(
+            "UPDATE `user` SET nom=?, prenom=?, mail=?, role=?, type_compte=?, social_media_link=?
+             WHERE id=?"
+        );
+        $stmt->execute([
+            $user->getNom(),
+            $user->getPrenom(),
+            $user->getMail(),
+            $user->getRole(),
+            $user->getTypeCompte(),
+            $user->getSocialMediaLink(),
+            $user->getId()
+        ]);
+    }
+
+    private function updateUserProfile(User $user): void {
+        if ($user->getPassword() !== '') {
+            $stmt = $this->pdo->prepare(
+                "UPDATE `user`
+                 SET nom=?, prenom=?, mail=?, `password`=MD5(?), type_compte=?, social_media_link=?
+                 WHERE id=?"
+            );
+            $stmt->execute([
+                $user->getNom(),
+                $user->getPrenom(),
+                $user->getMail(),
+                $user->getPassword(),
+                $user->getTypeCompte(),
+                $user->getSocialMediaLink(),
+                $user->getId()
+            ]);
+        } else {
+            $stmt = $this->pdo->prepare(
+                "UPDATE `user`
+                 SET nom=?, prenom=?, mail=?, type_compte=?, social_media_link=?
+                 WHERE id=?"
+            );
+            $stmt->execute([
+                $user->getNom(),
+                $user->getPrenom(),
+                $user->getMail(),
+                $user->getTypeCompte(),
+                $user->getSocialMediaLink(),
+                $user->getId()
+            ]);
+        }
+    }
+
+    private function deleteUser(int $id): void {
+        $stmt = $this->pdo->prepare("DELETE FROM `user` WHERE id = ?");
+        $stmt->execute([$id]);
+    }
+
+    private function countAllUsers(): int {
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM `user` WHERE is_accepted = 1");
+        $stmt->execute();
+        return (int)$stmt->fetchColumn();
+    }
+
+    private function countUsersByRole(string $role): int {
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM `user` WHERE `role` = ? AND is_accepted = 1");
+        $stmt->execute([$role]);
+        return (int)$stmt->fetchColumn();
+    }
+
+    private function countUsersByType(string $type): int {
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM `user` WHERE `type_compte` = ? AND is_accepted = 1");
+        $stmt->execute([$type]);
+        return (int)$stmt->fetchColumn();
+    }
+
+    private function countNewUsersThisMonth(): int {
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT COUNT(*) FROM `user`
+                 WHERE MONTH(created_at) = MONTH(NOW())
+                 AND YEAR(created_at) = YEAR(NOW())"
+            );
+            $stmt->execute();
+            return (int)$stmt->fetchColumn();
+        } catch (\PDOException $e) {
+            return 0;
+        }
+    }
+
+    private function getLastFiveUsers(): array {
+        $stmt = $this->pdo->prepare(
+            "SELECT id, nom, prenom, mail, role, type_compte, social_media_link, is_accepted
+             FROM `user` ORDER BY id DESC LIMIT 5"
+        );
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map(fn($r) => User::fromArray($r), $rows);
+    }
+
+    // Demande DB Logic
+    private function getDemandesEnAttente(): array {
+        $stmt = $this->pdo->prepare("SELECT * FROM `user` WHERE is_accepted = 0 AND role != 'admin' ORDER BY id ASC");
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map(fn($r) => User::fromArray($r), $rows);
+    }
+
+    private function countDemandesEnAttente(): int {
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM `user` WHERE is_accepted = 0 AND role != 'admin'");
+        $stmt->execute();
+        return (int)$stmt->fetchColumn();
+    }
+
+    private function accepterDemande(int $id): bool {
+        $stmt = $this->pdo->prepare("UPDATE `user` SET is_accepted = 1 WHERE id = ?");
+        return $stmt->execute([$id]);
+    }
+
+    private function refuserDemande(int $id): bool {
+        $stmt = $this->pdo->prepare("DELETE FROM `user` WHERE id = ?");
+        return $stmt->execute([$id]);
+    }
+
+    // ==========================================================
     // ── AUTH ──────────────────────────────────────────────────
+    // ==========================================================
 
     public function login(): void
     {
@@ -49,9 +216,13 @@ class EntityController
                 $this->redirectError('Veuillez remplir tous les champs.');
             }
 
-            $user = $this->userModel->getByMail($mail);
+            $user = $this->getUserByMail($mail);
             if (!$user || md5($password) !== $user->getPassword()) {
                 $this->redirectError('Email ou mot de passe incorrect.');
+            }
+
+            if (!$user->getIsAccepted()) {
+                $this->redirectError("Votre compte est en attente d'acceptation par l'administrateur.");
             }
 
             $_SESSION['user_id'] = $user->getId();
@@ -108,10 +279,8 @@ class EntityController
                 $errors['mail'] = "Ce champ est obligatoire.";
             } elseif (!str_ends_with($mail, '@gmail.com')) {
                 $errors['mail'] = "L'email doit se terminer par @gmail.com.";
-            } elseif ($this->userModel->mailExiste($mail, 0)) {
-                $errors['mail'] = "Cet email est déjà utilisé.";
-            } elseif ($this->demandeModel->mailEnAttente($mail)) {
-                $errors['mail'] = "Une demande est déjà en attente pour cet email.";
+            } elseif ($this->userMailExiste($mail, 0)) {
+                $errors['mail'] = "Cet email est déjà utilisé ou en attente d'acceptation.";
             }
 
             if ($password === '') {
@@ -123,7 +292,6 @@ class EntityController
                 $errors['type_compte'] = "Veuillez choisir un type de compte.";
             }
 
-            // ── Lien social : obligatoire SEULEMENT pour les créateurs ──
             if ($type === 'createur') {
                 if ($socialMediaLink === '') {
                     $errors['social_media_link'] = "Le lien réseau social est obligatoire pour un créateur.";
@@ -139,14 +307,18 @@ class EntityController
             }
 
             if (empty($errors)) {
-                $this->demandeModel->creerDemande([
-                    'nom'               => $nom,
-                    'prenom'            => $prenom,
-                    'mail'              => $mail,
-                    'password'          => $password,
-                    'type_compte'       => $type,
-                    'social_media_link' => $socialMediaLink,
-                ]);
+                $user = new User();
+                $user->setNom($nom);
+                $user->setPrenom($prenom);
+                $user->setMail($mail);
+                $user->setPassword($password);
+                $user->setTypeCompte($type);
+                $user->setSocialMediaLink($socialMediaLink);
+                $user->setRole('user');
+                $user->setIsAccepted(false);
+                
+                $this->insertUser($user);
+                
                 $_SESSION['msg_register'] = "Votre demande a été envoyée. Elle sera traitée par l'administrateur.";
                 header('Location: index.php?ctrl=auth&action=login');
                 exit;
@@ -165,7 +337,9 @@ class EntityController
         exit;
     }
 
+    // ==========================================================
     // ── USER (admin / profil) ─────────────────────────────────
+    // ==========================================================
 
     private function checkAdmin(): void
     {
@@ -181,47 +355,6 @@ class EntityController
             header('Location: index.php?ctrl=auth&action=login');
             exit;
         }
-    }
-
-    private function valider(array $data, int $excludeId = 0): array
-    {
-        $errors   = [];
-        $nom      = trim($data['nom']         ?? '');
-        $prenom   = trim($data['prenom']      ?? '');
-        $mail     = trim($data['mail']        ?? '');
-        $password = trim($data['password']    ?? '');
-        $type     = trim($data['type_compte'] ?? '');
-
-        if ($nom === '') {
-            $errors['nom'] = "Ce champ est obligatoire.";
-        } elseif (!preg_match('/^[a-zA-ZÀ-ÿ\s\-]+$/u', $nom)) {
-            $errors['nom'] = "Le nom ne doit contenir que des lettres.";
-        }
-
-        if ($prenom === '') {
-            $errors['prenom'] = "Ce champ est obligatoire.";
-        } elseif (!preg_match('/^[a-zA-ZÀ-ÿ\s\-]+$/u', $prenom)) {
-            $errors['prenom'] = "Le prénom ne doit contenir que des lettres.";
-        }
-
-        if ($mail === '') {
-            $errors['mail'] = "Ce champ est obligatoire.";
-        } elseif (!str_ends_with($mail, '@gmail.com')) {
-            $errors['mail'] = "L'email doit se terminer par @gmail.com.";
-        } elseif (empty($errors['mail']) && $this->userModel->mailExiste($mail, $excludeId)) {
-            $errors['mail'] = "Cet email est déjà utilisé.";
-        }
-
-        if ($password === '') {
-            $errors['password'] = "Ce champ est obligatoire.";
-        }
-
-        $typesValides = ['user', 'societe', 'createur'];
-        if (!in_array($type, $typesValides, true)) {
-            $errors['type_compte'] = "Veuillez choisir un type de compte valide.";
-        }
-
-        return $errors;
     }
 
     private function validerProfil(array $data, int $userId): array
@@ -248,7 +381,7 @@ class EntityController
             $errors['mail'] = "Ce champ est obligatoire.";
         } elseif (!str_ends_with($mail, '@gmail.com')) {
             $errors['mail'] = "L'email doit se terminer par @gmail.com.";
-        } elseif (empty($errors['mail']) && $this->userModel->mailExiste($mail, $userId)) {
+        } elseif (empty($errors['mail']) && $this->userMailExiste($mail, $userId)) {
             $errors['mail'] = "Cet email est déjà utilisé.";
         }
 
@@ -273,7 +406,7 @@ class EntityController
     public function index(): void
     {
         $this->checkAdmin();
-        $users              = $this->userModel->getAll();
+        $users              = $this->getAllUsers();
         $total              = count($users);
         $totalPages         = 1;
         $currentPage        = 1;
@@ -282,7 +415,7 @@ class EntityController
         $statusFilter       = '';
         $page               = 'users';
         $currentUser        = $this->sessionUser();
-        $demandesEnAttente  = $this->demandeModel->countEnAttente();
+        $demandesEnAttente  = $this->countDemandesEnAttente();
         $currentUserId      = (int)($_SESSION['user_id'] ?? 0);
         $this->render('backoffice/list', compact(
             'users', 'total', 'totalPages', 'currentPage',
@@ -295,16 +428,16 @@ class EntityController
     {
         $this->checkAdmin();
         $stats = [
-            'total'            => $this->userModel->countAll(),
-            'admins'           => $this->userModel->countByRole('admin'),
-            'users'            => $this->userModel->countByRole('user'),
-            'new_month'        => $this->userModel->countNewThisMonth(),
-            'societes'         => $this->userModel->countByType('societe'),
-            'createurs'        => $this->userModel->countByType('createur'),
-            'normaux'          => $this->userModel->countByType('user'),
-            'demandes_attente' => $this->demandeModel->countEnAttente(),
+            'total'            => $this->countAllUsers(),
+            'admins'           => $this->countUsersByRole('admin'),
+            'users'            => $this->countUsersByRole('user'),
+            'new_month'        => $this->countNewUsersThisMonth(),
+            'societes'         => $this->countUsersByType('societe'),
+            'createurs'        => $this->countUsersByType('createur'),
+            'normaux'          => $this->countUsersByType('user'),
+            'demandes_attente' => $this->countDemandesEnAttente(),
         ];
-        $lastUsers         = $this->userModel->getLastFive();
+        $lastUsers         = $this->getLastFiveUsers();
         $page              = 'dashboard';
         $currentUser       = $this->sessionUser();
         $nomAdmin          = $_SESSION['nom'] ?? 'Admin';
@@ -322,7 +455,7 @@ class EntityController
             header('Location: index.php?ctrl=user&action=index');
             exit;
         }
-        $this->userModel->delete($id);
+        $this->deleteUser($id);
         header('Location: index.php?ctrl=user&action=index&success=suppression');
         exit;
     }
@@ -342,7 +475,6 @@ class EntityController
             $role            = trim($_POST['role']             ?? 'user');
             $socialMediaLink = trim($_POST['social_media_link'] ?? '');
 
-            // — Validation —
             if ($nom === '') {
                 $errors['nom'] = "Ce champ est obligatoire.";
             } elseif (!preg_match('/^[a-zA-ZÀ-ÿ\s\-]+$/u', $nom)) {
@@ -359,7 +491,7 @@ class EntityController
                 $errors['mail'] = "Ce champ est obligatoire.";
             } elseif (!str_ends_with($mail, '@gmail.com')) {
                 $errors['mail'] = "L'email doit se terminer par @gmail.com.";
-            } elseif ($this->userModel->mailExiste($mail, 0)) {
+            } elseif ($this->userMailExiste($mail, 0)) {
                 $errors['mail'] = "Cet email est déjà utilisé.";
             }
 
@@ -377,7 +509,6 @@ class EntityController
                 $errors['role'] = "Rôle invalide.";
             }
 
-            // ── Lien social : obligatoire SEULEMENT pour les créateurs ──
             if ($type === 'createur') {
                 if ($socialMediaLink === '') {
                     $errors['social_media_link'] = "Le lien réseau social est obligatoire pour un créateur.";
@@ -392,7 +523,6 @@ class EntityController
             }
 
             if (empty($errors)) {
-                // Utilise l'entité User via les setters avant d'appeler le model
                 $user = new User();
                 $user->setNom($nom);
                 $user->setPrenom($prenom);
@@ -401,8 +531,9 @@ class EntityController
                 $user->setRole($role);
                 $user->setTypeCompte($type);
                 $user->setSocialMediaLink($socialMediaLink);
+                $user->setIsAccepted(true);
 
-                $this->userModel->insert($user->toArray() + ['role' => $role]);
+                $this->insertUser($user);
                 header('Location: index.php?ctrl=user&action=index&success=creation');
                 exit;
             }
@@ -411,7 +542,7 @@ class EntityController
 
         $page              = 'users';
         $currentUser       = $this->sessionUser();
-        $demandesEnAttente = $this->demandeModel->countEnAttente();
+        $demandesEnAttente = $this->countDemandesEnAttente();
         $this->render('backoffice/form_add', compact(
             'errors', 'old', 'page', 'currentUser', 'demandesEnAttente'
         ));
@@ -421,13 +552,13 @@ class EntityController
     {
         $this->checkAdmin();
         $id      = (int)($_GET['id'] ?? 0);
-        $userObj = $this->userModel->getById($id);
+        $userObj = $this->getUserById($id);
         if (!$userObj) {
             $this->redirectError("Utilisateur introuvable.");
         }
 
         $errors = [];
-        $item   = $userObj->toArray();
+        $item   = clone $userObj;
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $nom             = trim($_POST['nom']              ?? '');
@@ -437,7 +568,6 @@ class EntityController
             $role            = trim($_POST['role']             ?? 'user');
             $socialMediaLink = trim($_POST['social_media_link'] ?? '');
 
-            // — Validation —
             if ($nom === '') {
                 $errors['nom'] = "Ce champ est obligatoire.";
             } elseif (!preg_match('/^[a-zA-ZÀ-ÿ\s\-]+$/u', $nom)) {
@@ -454,7 +584,7 @@ class EntityController
                 $errors['mail'] = "Ce champ est obligatoire.";
             } elseif (!str_ends_with($mail, '@gmail.com')) {
                 $errors['mail'] = "L'email doit se terminer par @gmail.com.";
-            } elseif ($this->userModel->mailExiste($mail, $id)) {
+            } elseif ($this->userMailExiste($mail, $id)) {
                 $errors['mail'] = "Cet email est déjà utilisé.";
             }
 
@@ -468,27 +598,23 @@ class EntityController
                 $errors['role'] = "Rôle invalide.";
             }
 
-            if (empty($errors)) {
-                // Utilise les setters de l'entité User pour préparer les données
-                $userObj->setNom($nom);
-                $userObj->setPrenom($prenom);
-                $userObj->setMail($mail);
-                $userObj->setRole($role);
-                $userObj->setTypeCompte($type);
-                $userObj->setSocialMediaLink($socialMediaLink);
+            $item->setNom($nom);
+            $item->setPrenom($prenom);
+            $item->setMail($mail);
+            $item->setRole($role);
+            $item->setTypeCompte($type);
+            $item->setSocialMediaLink($socialMediaLink);
 
-                $this->userModel->update($id, $userObj->toArray());
+            if (empty($errors)) {
+                $this->updateUser($item);
                 header('Location: index.php?ctrl=user&action=index&success=modification');
                 exit;
             }
-
-            // En cas d'erreur, recharger $item avec les données soumises
-            $item = array_merge($item, $_POST, ['id' => $id]);
         }
 
         $page              = 'users';
         $currentUser       = $this->sessionUser();
-        $demandesEnAttente = $this->demandeModel->countEnAttente();
+        $demandesEnAttente = $this->countDemandesEnAttente();
         $this->render('backoffice/form_edit', compact(
             'item', 'errors', 'page', 'currentUser', 'demandesEnAttente'
         ));
@@ -498,14 +624,14 @@ class EntityController
     {
         $this->checkAdmin();
         $id      = (int)($_GET['id'] ?? 0);
-        $userObj = $this->userModel->getById($id);
+        $userObj = $this->getUserById($id);
         if (!$userObj) {
             $this->redirectError("Utilisateur introuvable.");
         }
-        $item              = $userObj->toArray();
+        $item              = clone $userObj;
         $page              = 'users';
         $currentUser       = $this->sessionUser();
-        $demandesEnAttente = $this->demandeModel->countEnAttente();
+        $demandesEnAttente = $this->countDemandesEnAttente();
         $this->render('backoffice/detail', compact('item', 'page', 'currentUser', 'demandesEnAttente'));
     }
 
@@ -513,16 +639,16 @@ class EntityController
     {
         $this->checkLogged();
         $errors  = [];
-        $userObj = $this->userModel->getById((int)$_SESSION['user_id']);
+        $userObj = $this->getUserById((int)$_SESSION['user_id']);
         if (!$userObj) {
             header('Location: index.php?ctrl=auth&action=login');
             exit;
         }
-        $item              = $userObj->toArray();
-        $profile           = $item;
+        $item              = clone $userObj;
+        $profile           = clone $userObj;
         $page              = 'profile';
         $currentUser       = $this->sessionUser();
-        $demandesEnAttente = $this->demandeModel->countEnAttente();
+        $demandesEnAttente = $this->countDemandesEnAttente();
         $successProfile    = $_SESSION['success'] ?? '';
         unset($_SESSION['success']);
         $this->render('backoffice/profile', compact('item', 'profile', 'errors', 'page', 'currentUser', 'demandesEnAttente', 'successProfile'));
@@ -533,19 +659,44 @@ class EntityController
         $this->checkLogged();
         $userId = (int)$_SESSION['user_id'];
         $errors = $this->validerProfil($_POST, $userId);
-        if (empty($errors)) {
-            $this->userModel->updateProfile($userId, $_POST);
+        $userObj = $this->getUserById($userId);
+        
+        if (empty($errors) && $userObj) {
+            $userObj->setNom(trim($_POST['nom'] ?? ''));
+            $userObj->setPrenom(trim($_POST['prenom'] ?? ''));
+            $userObj->setMail(trim($_POST['mail'] ?? ''));
+            $userObj->setTypeCompte(trim($_POST['type_compte'] ?? 'user'));
+            $userObj->setSocialMediaLink(trim($_POST['social_media_link'] ?? ''));
+            
+            if (!empty($_POST['password'])) {
+                $userObj->setPassword(trim($_POST['password']));
+            } else {
+                $userObj->setPassword('');
+            }
+            
+            $this->updateUserProfile($userObj);
+
             $_SESSION['nom']     = trim($_POST['nom']);
             $_SESSION['mail']    = trim($_POST['mail']);
             $_SESSION['success'] = "Profil mis à jour avec succès.";
             header('Location: index.php?ctrl=user&action=profile');
             exit;
         }
-        $item              = array_merge($_POST, ['id' => $userId]);
-        $profile           = $item;
+
+        if (isset($userObj)) {
+            $item = clone $userObj;
+            $item->setNom(trim($_POST['nom'] ?? ''));
+            $item->setPrenom(trim($_POST['prenom'] ?? ''));
+            $item->setMail(trim($_POST['mail'] ?? ''));
+            $item->setTypeCompte(trim($_POST['type_compte'] ?? 'user'));
+            $item->setSocialMediaLink(trim($_POST['social_media_link'] ?? ''));
+        } else {
+            $item = new User();
+        }
+        $profile           = clone $item;
         $page              = 'profile';
         $currentUser       = $this->sessionUser();
-        $demandesEnAttente = $this->demandeModel->countEnAttente();
+        $demandesEnAttente = $this->countDemandesEnAttente();
         $successProfile    = '';
         $this->render('backoffice/profile', compact('item', 'profile', 'errors', 'page', 'currentUser', 'demandesEnAttente', 'successProfile'));
     }
@@ -557,20 +708,22 @@ class EntityController
             header('Location: index.php?ctrl=user&action=profile');
             exit;
         }
-        $this->userModel->delete((int)$_SESSION['user_id']);
+        $this->deleteUser((int)$_SESSION['user_id']);
         session_unset();
         session_destroy();
         header('Location: index.php?ctrl=auth&action=login');
         exit;
     }
 
+    // ==========================================================
     // ── DEMANDES ──────────────────────────────────────────────
+    // ==========================================================
 
     public function liste(): void
     {
         $this->checkAdmin();
-        $demandes          = $this->demandeModel->getEnAttente();
-        $totalEnAttente    = $this->demandeModel->countEnAttente();
+        $demandes          = $this->getDemandesEnAttente();
+        $totalEnAttente    = $this->countDemandesEnAttente();
         $demandesEnAttente = $totalEnAttente;
         $currentUser       = $this->sessionUser();
         $page              = 'demandes';
@@ -581,24 +734,14 @@ class EntityController
         ));
     }
 
-    public function historique(): void
-    {
-        $this->checkAdmin();
-        $demandes          = $this->demandeModel->getAll();
-        $demandesEnAttente = $this->demandeModel->countEnAttente();
-        $currentUser       = $this->sessionUser();
-        $page              = 'demandes';
-        $this->render('backoffice/demandes_historique', compact(
-            'demandes', 'demandesEnAttente', 'currentUser', 'page'
-        ));
-    }
+
 
     public function accepter(): void
     {
         $this->checkAdmin();
         $id = (int)($_GET['id'] ?? 0);
         if ($id > 0) {
-            $this->demandeModel->accepter($id, $this->userModel);
+            $this->accepterDemande($id);
             $_SESSION['success_demande'] = "Compte créé avec succès.";
         }
         header('Location: index.php?ctrl=demande&action=liste');
@@ -610,14 +753,16 @@ class EntityController
         $this->checkAdmin();
         $id = (int)($_GET['id'] ?? 0);
         if ($id > 0) {
-            $this->demandeModel->refuser($id);
+            $this->refuserDemande($id);
             $_SESSION['success_demande'] = "Demande refusée.";
         }
         header('Location: index.php?ctrl=demande&action=liste');
         exit;
     }
 
+    // ==========================================================
     // ── VIEW ──────────────────────────────────────────────────
+    // ==========================================================
 
     private function render(string $view, array $data = []): void
     {

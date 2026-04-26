@@ -1,18 +1,18 @@
 <?php require_once __DIR__ . '/layout_back.php'; ?>
 
 <?php
-$initiales  = strtoupper(substr($item['nom'] ?? 'U', 0, 1) . substr($item['prenom'] ?? 'U', 0, 1));
-$fullName   = htmlspecialchars(($item['nom'] ?? '') . ' ' . ($item['prenom'] ?? ''));
-$handle     = '@' . strtolower(str_replace(' ', '_', trim(($item['nom'] ?? '') . '_' . ($item['prenom'] ?? ''))));
-$typeLabel  = match($item['type_compte'] ?? 'user') {
+$initiales  = strtoupper(substr($item->getNom() ?: 'U', 0, 1) . substr($item->getPrenom() ?: 'U', 0, 1));
+$fullName   = htmlspecialchars(($item->getNom() ?: '') . ' ' . ($item->getPrenom() ?: ''));
+$handle     = '@' . strtolower(str_replace(' ', '_', trim(($item->getNom() ?: '') . '_' . ($item->getPrenom() ?: ''))));
+$typeLabel  = match($item->getTypeCompte() ?: 'user') {
     'createur' => '🎬 Créateur de contenu',
     'societe'  => '🏢 Société',
     default    => '👤 Utilisateur',
 };
-$followers  = number_format((int)($item['followers'] ?? 0), 0, ',', ' ');
-$following  = number_format((int)($item['following'] ?? 0), 0, ',', ' ');
-$socialLink = $item['social_media_link'] ?? '';
-$isCreateur = ($item['type_compte'] ?? '') === 'createur';
+$followers  = number_format((int)($item->getFollowers() ?: 0), 0, ',', ' ');
+$following  = number_format((int)($item->getFollowing() ?: 0), 0, ',', ' ');
+$socialLink = $item->getSocialMediaLink() ?: '';
+$isCreateur = ($item->getTypeCompte() ?: '') === 'createur';
 ?>
 
 <style>
@@ -140,7 +140,7 @@ $isCreateur = ($item['type_compte'] ?? '') === 'createur';
         </div>
         <div class="ig-stat">
           <div class="ig-stat-num">
-            <?= match($item['type_compte'] ?? 'user') {
+            <?= match($item->getTypeCompte() ?: 'user') {
               'createur' => '🎬', 'societe' => '🏢', default => '👤'
             } ?>
           </div>
@@ -170,7 +170,7 @@ $isCreateur = ($item['type_compte'] ?? '') === 'createur';
           <div class="ig-fg">
             <label class="ig-label">Nom</label>
             <input type="text" name="nom" class="ig-input"
-                   value="<?= htmlspecialchars($item['nom'] ?? '') ?>">
+                   value="<?= htmlspecialchars($item->getNom() ?: '') ?>">
             <?php if (!empty($errors['nom'])): ?>
               <span style="color:#ff6b6b;font-size:0.8rem;margin-top:4px;display:block;">
                 <?= htmlspecialchars($errors['nom']) ?></span>
@@ -180,7 +180,7 @@ $isCreateur = ($item['type_compte'] ?? '') === 'createur';
           <div class="ig-fg">
             <label class="ig-label">Prénom</label>
             <input type="text" name="prenom" class="ig-input"
-                   value="<?= htmlspecialchars($item['prenom'] ?? '') ?>">
+                   value="<?= htmlspecialchars($item->getPrenom() ?: '') ?>">
             <?php if (!empty($errors['prenom'])): ?>
               <span style="color:#ff6b6b;font-size:0.8rem;margin-top:4px;display:block;">
                 <?= htmlspecialchars($errors['prenom']) ?></span>
@@ -190,7 +190,7 @@ $isCreateur = ($item['type_compte'] ?? '') === 'createur';
           <div class="ig-fg">
             <label class="ig-label">Mail</label>
             <input type="text" name="mail" class="ig-input"
-                   value="<?= htmlspecialchars($item['mail'] ?? '') ?>">
+                   value="<?= htmlspecialchars($item->getMail() ?: '') ?>">
             <?php if (!empty($errors['mail'])): ?>
               <span style="color:#ff6b6b;font-size:0.8rem;margin-top:4px;display:block;">
                 <?= htmlspecialchars($errors['mail']) ?></span>
@@ -200,9 +200,9 @@ $isCreateur = ($item['type_compte'] ?? '') === 'createur';
           <div class="ig-fg">
             <label class="ig-label">Type de compte</label>
             <select name="type_compte" id="prof_type_compte" class="ig-input">
-              <option value="user"     <?= ($item['type_compte'] ?? 'user') === 'user'     ? 'selected' : '' ?>>Utilisateur normal</option>
-              <option value="societe"  <?= ($item['type_compte'] ?? '')     === 'societe'  ? 'selected' : '' ?>>Société</option>
-              <option value="createur" <?= ($item['type_compte'] ?? '')     === 'createur' ? 'selected' : '' ?>>Créateur de contenu</option>
+              <option value="user"     <?= ($item->getTypeCompte() ?: 'user') === 'user'     ? 'selected' : '' ?>>Utilisateur normal</option>
+              <option value="societe"  <?= ($item->getTypeCompte() ?: '')     === 'societe'  ? 'selected' : '' ?>>Société</option>
+              <option value="createur" <?= ($item->getTypeCompte() ?: '')     === 'createur' ? 'selected' : '' ?>>Créateur de contenu</option>
             </select>
           </div>
 

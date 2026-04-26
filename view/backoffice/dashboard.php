@@ -144,13 +144,13 @@
           ];
           ?>
           <?php foreach ($lastUsers as $u): ?>
-          <?php $t = $labels[$u['type_compte'] ?? 'user'] ?? $labels['user']; ?>
+          <?php $t = $labels[$u->getTypeCompte() ?: 'user'] ?? $labels['user']; ?>
           <tr>
-            <td style="font-weight:600; color:var(--text);"><?= htmlspecialchars($u['nom']) ?></td>
-            <td style="color:var(--text2);"><?= htmlspecialchars($u['prenom']) ?></td>
-            <td style="color:var(--text2);"><?= htmlspecialchars($u['mail']) ?></td>
+            <td style="font-weight:600; color:var(--text);"><?= htmlspecialchars($u->getNom()) ?></td>
+            <td style="color:var(--text2);"><?= htmlspecialchars($u->getPrenom()) ?></td>
+            <td style="color:var(--text2);"><?= htmlspecialchars($u->getMail()) ?></td>
             <td>
-              <?php if ($u['role'] === 'admin'): ?>
+              <?php if ($u->getRole() === 'admin'): ?>
                 <span class="badge badge-pro">Admin</span>
               <?php else: ?>
                 <span class="badge badge-verified">User</span>

@@ -48,11 +48,11 @@
           <?php else: ?>
           <?php foreach ($users as $u): ?>
           <tr>
-            <td style="font-weight:600; color:var(--text);"><?= htmlspecialchars($u['nom']) ?></td>
-            <td style="color:var(--text2);"><?= htmlspecialchars($u['prenom']) ?></td>
-            <td style="color:var(--text2);"><?= htmlspecialchars($u['mail']) ?></td>
+            <td style="font-weight:600; color:var(--text);"><?= htmlspecialchars($u->getNom()) ?></td>
+            <td style="color:var(--text2);"><?= htmlspecialchars($u->getPrenom()) ?></td>
+            <td style="color:var(--text2);"><?= htmlspecialchars($u->getMail()) ?></td>
             <td>
-              <?php if ($u['role'] === 'admin'): ?>
+              <?php if ($u->getRole() === 'admin'): ?>
                 <span class="badge badge-pro">Admin</span>
               <?php else: ?>
                 <span class="badge badge-verified">User</span>
@@ -61,19 +61,19 @@
             <td>
               <?php
               $types = ['societe'=>'Société','createur'=>'Créateur','user'=>'Utilisateur','admin'=>'Admin'];
-              echo htmlspecialchars($types[$u['type_compte'] ?? 'user'] ?? 'Utilisateur');
+              echo htmlspecialchars($types[$u->getTypeCompte() ?: 'user'] ?? 'Utilisateur');
               ?>
             </td>
             <td>
               <div class="table-actions">
-                <a href="index.php?ctrl=user&action=detail&id=<?= (int)$u['id'] ?>">
+                <a href="index.php?ctrl=user&action=detail&id=<?= $u->getId() ?>">
                   <button class="action-btn" title="Voir détail"
                           style="color:var(--secondary); border-color:var(--secondary);">
                     👁️
                   </button>
                 </a>
-                <?php if ((int)$u['id'] !== (int)($currentUserId ?? 0)): ?>
-                <a href="index.php?ctrl=user&action=delete&id=<?= (int)$u['id'] ?>"
+                <?php if ($u->getId() !== (int)($currentUserId ?? 0)): ?>
+                <a href="index.php?ctrl=user&action=delete&id=<?= $u->getId() ?>"
                    onclick="return window.confirm('Confirmer la suppression de cet utilisateur ?')">
                   <button class="action-btn del" title="Supprimer">🗑️</button>
                 </a>

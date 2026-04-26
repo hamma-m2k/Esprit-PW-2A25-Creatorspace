@@ -18,15 +18,14 @@
                 border-radius:16px; padding:2rem;
                 box-shadow:0 8px 32px rgba(108,63,197,0.15);">
 
-      <!-- POST → action=update&id= — NO HTML5 attributes -->
-      <form method="POST" action="index.php?ctrl=user&action=update&id=<?= (int)($item['id'] ?? 0) ?>">
+      <form method="POST" action="index.php?ctrl=user&action=update&id=<?= $item->getId() ?>">
 
         <div style="margin-bottom:20px;">
           <label style="display:block; color:var(--text2); font-size:0.85rem; margin-bottom:8px;">Nom</label>
           <!-- type="text" — NO required, NO pattern -->
           <input type="text" name="nom"
                  placeholder="Ex: Marzougui"
-                 value="<?= htmlspecialchars($item['nom'] ?? '') ?>"
+                 value="<?= htmlspecialchars($item->getNom() ?: '') ?>"
                  style="width:100%; background:rgba(255,255,255,0.08);
                         border:1px solid rgba(108,63,197,0.5); color:var(--text);
                         border-radius:8px; padding:12px 14px; font-size:0.95rem; outline:none;">
@@ -41,7 +40,7 @@
           <label style="display:block; color:var(--text2); font-size:0.85rem; margin-bottom:8px;">Prénom</label>
           <input type="text" name="prenom"
                  placeholder="Ex: Mohamed"
-                 value="<?= htmlspecialchars($item['prenom'] ?? '') ?>"
+                 value="<?= htmlspecialchars($item->getPrenom() ?: '') ?>"
                  style="width:100%; background:rgba(255,255,255,0.08);
                         border:1px solid rgba(108,63,197,0.5); color:var(--text);
                         border-radius:8px; padding:12px 14px; font-size:0.95rem; outline:none;">
@@ -57,7 +56,7 @@
           <!-- type="text" — NOT type="email" -->
           <input type="text" name="mail"
                  placeholder="exemple@gmail.com"
-                 value="<?= htmlspecialchars($item['mail'] ?? '') ?>"
+                 value="<?= htmlspecialchars($item->getMail() ?: '') ?>"
                  style="width:100%; background:rgba(255,255,255,0.08);
                         border:1px solid rgba(108,63,197,0.5); color:var(--text);
                         border-radius:8px; padding:12px 14px; font-size:0.95rem; outline:none;">
@@ -74,8 +73,8 @@
                   style="width:100%; background:rgba(255,255,255,0.08);
                          border:1px solid rgba(108,63,197,0.5); color:var(--text);
                          border-radius:8px; padding:12px 14px; font-size:0.95rem; outline:none;">
-            <option value="user"  <?= ($item['role'] ?? '') === 'user'  ? 'selected' : '' ?>>Utilisateur</option>
-            <option value="admin" <?= ($item['role'] ?? '') === 'admin' ? 'selected' : '' ?>>Administrateur</option>
+            <option value="user"  <?= ($item->getRole() ?: '') === 'user'  ? 'selected' : '' ?>>Utilisateur</option>
+            <option value="admin" <?= ($item->getRole() ?: '') === 'admin' ? 'selected' : '' ?>>Administrateur</option>
           </select>
         </div>
 

@@ -17,10 +17,8 @@ require_once __DIR__ . '/layout_back.php';
         </span>
       </p>
     </div>
-    <a href="index.php?ctrl=demande&action=historique">
-      <button class="btn btn-outline btn-sm">📜 Voir l'historique</button>
-    </a>
   </div>
+
 
   <?php if (!empty($successDemande)): ?>
   <div class="toast success" style="position:static;display:flex;margin-bottom:20px;animation:none;">
@@ -58,28 +56,28 @@ require_once __DIR__ . '/layout_back.php';
           ?>
           <?php foreach ($demandes as $d): ?>
           <tr>
-            <td style="font-weight:600; color:var(--text);"><?= htmlspecialchars($d['nom']) ?></td>
-            <td style="color:var(--text2);"><?= htmlspecialchars($d['prenom']) ?></td>
-            <td style="color:var(--text2);"><?= htmlspecialchars($d['mail']) ?></td>
+            <td style="font-weight:600; color:var(--text);"><?= htmlspecialchars($d->getNom()) ?></td>
+            <td style="color:var(--text2);"><?= htmlspecialchars($d->getPrenom()) ?></td>
+            <td style="color:var(--text2);"><?= htmlspecialchars($d->getMail()) ?></td>
             <td>
               <span class="badge badge-verified">
-                <?= htmlspecialchars($types[$d['type_compte']] ?? $d['type_compte']) ?>
+                <?= htmlspecialchars($types[$d->getTypeCompte()] ?? $d->getTypeCompte()) ?>
               </span>
             </td>
             <td style="color:var(--text3); font-size:0.82rem;">
-              <?= htmlspecialchars(date('d/m/Y H:i', strtotime($d['created_at']))) ?>
+              <?= htmlspecialchars(date('d/m/Y H:i', strtotime($d->getCreatedAt()))) ?>
             </td>
             <td>
               <div class="table-actions">
-                <a href="index.php?ctrl=demande&action=accepter&id=<?= (int)$d['id'] ?>"
-                   onclick="return window.confirm('Accepter et créer le compte de <?= htmlspecialchars($d['nom']) ?> ?')">
+                <a href="index.php?ctrl=demande&action=accepter&id=<?= $d->getId() ?>"
+                   onclick="return window.confirm('Accepter et créer le compte de <?= htmlspecialchars($d->getNom()) ?> ?')">
                   <button class="action-btn" title="Accepter"
                           style="color:var(--success); border-color:var(--success);">
                     ✅
                   </button>
                 </a>
-                <a href="index.php?ctrl=demande&action=refuser&id=<?= (int)$d['id'] ?>"
-                   onclick="return window.confirm('Refuser la demande de <?= htmlspecialchars($d['nom']) ?> ?')">
+                <a href="index.php?ctrl=demande&action=refuser&id=<?= $d->getId() ?>"
+                   onclick="return window.confirm('Refuser la demande de <?= htmlspecialchars($d->getNom()) ?> ?')">
                   <button class="action-btn del" title="Refuser">❌</button>
                 </a>
               </div>
