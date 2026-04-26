@@ -3,7 +3,7 @@
 session_start();
 
 require_once 'Model/config.php';
-require_once 'Model/SessionManager.php';
+require_once 'Model/Entity.php';
 
 $ctrl   = $_GET['ctrl']   ?? 'auth';
 $action = $_GET['action'] ?? 'login';
@@ -14,7 +14,7 @@ $controller = new EntityController($pdo);
 switch ($ctrl) {
 
     case 'user':
-        $allowed = ['index', 'dashboard', 'delete', 'detail', 'profile', 'updateProfile', 'deleteOwn'];
+        $allowed = ['index', 'dashboard', 'delete', 'detail', 'profile', 'updateProfile', 'deleteOwn', 'searchUsers', 'publicProfile', 'statistics'];
         if (!in_array($action, $allowed, true)) {
             header('Location: index.php?ctrl=auth&action=login');
             exit;

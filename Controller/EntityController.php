@@ -31,25 +31,73 @@ class EntityController
     // MÉTHODES DE LOGIQUE DE BASE DE DONNÉES (USER & DEMANDE)
     // ==========================================================
 
-    private function getAllUsers(): array {
-        $stmt = $this->pdo->prepare("SELECT id, nom, prenom, mail, role, type_compte, social_media_link, is_accepted FROM `user`");
-        $stmt->execute();
+    private function mapRowToUser(array $row): User
+    {
+        return new User(
+            (int)($row['id']          ?? 0),
+            $row['nom']               ?? '',
+            $row['prenom']            ?? '',
+            $row['mail']              ?? '',
+            $row['password']          ?? '',
+            $row['role']              ?? 'user',
+            $row['type_compte']       ?? 'user',
+            $row['social_media_link'] ?? '',
+            $row['created_at']        ?? '',
+            (int)($row['followers']   ?? 0),
+            (int)($row['following']   ?? 0),
+            (bool)($row['is_accepted'] ?? false)
+        );
+    }
+
+    private function getAllUsers(string $search = '', string $sort = 'id'): array {
+        $query = "SELECT id, nom, prenom, mail, role, type_compte, social_media_link, is_accepted, created_at, followers, following FROM `user`";
+        $params = [];
+        
+        if ($search !== '') {
+            $query .= " WHERE (nom LIKE ? OR prenom LIKE ? OR mail LIKE ?)";
+            $searchParam = "%$search%";
+            $params = [$searchParam, $searchParam, $searchParam];
+        }
+
+        switch ($sort) {
+            case 'alphabet':
+                $query .= " ORDER BY nom ASC, prenom ASC";
+                break;
+            case 'date':
+                $query .= " ORDER BY created_at DESC";
+                break;
+            case 'id':
+            default:
+                $query .= " ORDER BY id ASC";
+                break;
+        }
+
+        $stmt = $this->pdo->prepare($query);
+        $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        return array_map(fn($r) => User::fromArray($r), $rows);
+        return array_map(fn($r) => $this->mapRowToUser($r), $rows);
+    }
+
+    private function searchAcceptedUsers(string $term): array {
+        $query = "SELECT * FROM `user` WHERE is_accepted = 1 AND role != 'admin' AND (nom LIKE ? OR prenom LIKE ?) ORDER BY nom ASC";
+        $stmt = $this->pdo->prepare($query);
+        $stmt->execute(["%$term%", "%$term%"]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map(fn($r) => $this->mapRowToUser($r), $rows);
     }
 
     private function getUserById(int $id): ?User {
         $stmt = $this->pdo->prepare("SELECT * FROM `user` WHERE id = ?");
         $stmt->execute([$id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $row ? User::fromArray($row) : null;
+        return $row ? $this->mapRowToUser($row) : null;
     }
 
     private function getUserByMail(string $mail): ?User {
         $stmt = $this->pdo->prepare("SELECT * FROM `user` WHERE mail = ? LIMIT 1");
         $stmt->execute([$mail]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $row ? User::fromArray($row) : null;
+        return $row ? $this->mapRowToUser($row) : null;
     }
 
     private function userMailExiste(string $mail, int $excludeId = 0): bool {
@@ -169,7 +217,7 @@ class EntityController
         );
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        return array_map(fn($r) => User::fromArray($r), $rows);
+        return array_map(fn($r) => $this->mapRowToUser($r), $rows);
     }
 
     // Demande DB Logic
@@ -177,7 +225,7 @@ class EntityController
         $stmt = $this->pdo->prepare("SELECT * FROM `user` WHERE is_accepted = 0 AND role != 'admin' ORDER BY id ASC");
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        return array_map(fn($r) => User::fromArray($r), $rows);
+        return array_map(fn($r) => $this->mapRowToUser($r), $rows);
     }
 
     private function countDemandesEnAttente(): int {
@@ -191,9 +239,23 @@ class EntityController
         return $stmt->execute([$id]);
     }
 
-    private function refuserDemande(int $id): bool {
-        $stmt = $this->pdo->prepare("DELETE FROM `user` WHERE id = ?");
-        return $stmt->execute([$id]);
+    private function getInscriptionsParMois(): array {
+        $query = "
+            SELECT MONTH(created_at) as mois, COUNT(*) as nb 
+            FROM `user` 
+            WHERE YEAR(created_at) = YEAR(CURRENT_DATE)
+            GROUP BY MONTH(created_at)
+            ORDER BY mois ASC
+        ";
+        $stmt = $this->pdo->prepare($query);
+        $stmt->execute();
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $stats = array_fill(1, 12, 0);
+        foreach ($results as $row) {
+            $stats[(int)$row['mois']] = (int)$row['nb'];
+        }
+        return $stats;
     }
 
     // ==========================================================
@@ -406,7 +468,9 @@ class EntityController
     public function index(): void
     {
         $this->checkAdmin();
-        $users              = $this->getAllUsers();
+        $search             = trim($_GET['search'] ?? '');
+        $sort               = $_GET['sort'] ?? 'id';
+        $users              = $this->getAllUsers($search, $sort);
         $total              = count($users);
         $totalPages         = 1;
         $currentPage        = 1;
@@ -419,7 +483,7 @@ class EntityController
         $currentUserId      = (int)($_SESSION['user_id'] ?? 0);
         $this->render('backoffice/list', compact(
             'users', 'total', 'totalPages', 'currentPage',
-            'search', 'roleFilter', 'statusFilter', 'page', 'currentUser',
+            'search', 'sort', 'roleFilter', 'statusFilter', 'page', 'currentUser',
             'demandesEnAttente', 'currentUserId'
         ));
     }
@@ -713,6 +777,49 @@ class EntityController
         session_destroy();
         header('Location: index.php?ctrl=auth&action=login');
         exit;
+    }
+
+    public function statistics(): void
+    {
+        $this->checkAdmin();
+        $inscriptionsStats = $this->getInscriptionsParMois();
+        $page              = 'stats';
+        $currentUser       = $this->sessionUser();
+        $demandesEnAttente = $this->countDemandesEnAttente();
+        
+        $this->render('backoffice/stats', compact('inscriptionsStats', 'page', 'currentUser', 'demandesEnAttente'));
+    }
+
+    public function searchUsers(): void
+    {
+        $this->checkLogged();
+        $term              = trim($_GET['q'] ?? '');
+        $users             = $term !== '' ? $this->searchAcceptedUsers($term) : [];
+        $page              = 'search';
+        $currentUser       = $this->sessionUser();
+        $demandesEnAttente = $this->countDemandesEnAttente();
+        
+        $this->render('backoffice/search_users', compact('users', 'term', 'page', 'currentUser', 'demandesEnAttente'));
+    }
+
+    public function publicProfile(): void
+    {
+        $this->checkLogged();
+        $id      = (int)($_GET['id'] ?? 0);
+        $userObj = $this->getUserById($id);
+        
+        if (!$userObj || !$userObj->getIsAccepted()) {
+            $_SESSION['app_error'] = "Utilisateur introuvable ou non accepté.";
+            header('Location: index.php?ctrl=user&action=searchUsers');
+            exit;
+        }
+
+        $item              = clone $userObj;
+        $page              = 'search';
+        $currentUser       = $this->sessionUser();
+        $demandesEnAttente = $this->countDemandesEnAttente();
+        
+        $this->render('backoffice/public_profile', compact('item', 'page', 'currentUser', 'demandesEnAttente'));
     }
 
     // ==========================================================

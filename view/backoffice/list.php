@@ -24,6 +24,33 @@
   </div>
   <?php endif; ?>
 
+  <!-- RECHERCHE ET TRI -->
+  <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(108,63,197,0.3); border-radius:12px; padding:16px; margin-bottom:20px;">
+    <form method="GET" action="index.php" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+      <input type="hidden" name="ctrl" value="user">
+      <input type="hidden" name="action" value="index">
+      
+      <div style="flex:1; min-width:200px;">
+        <input type="text" name="search" placeholder="Rechercher par nom, prénom ou email..." 
+               value="<?= htmlspecialchars($search ?? '') ?>" 
+               style="width:100%; padding:10px 14px; border-radius:8px; border:1px solid rgba(108,63,197,0.4); background:rgba(0,0,0,0.2); color:white; outline:none;">
+      </div>
+      
+      <div>
+        <select name="sort" style="padding:10px 14px; border-radius:8px; border:1px solid rgba(108,63,197,0.4); background:rgba(0,0,0,0.2); color:white; outline:none;">
+          <option value="id" <?= ($sort ?? '') === 'id' ? 'selected' : '' ?>>Trier par ID (Défaut)</option>
+          <option value="alphabet" <?= ($sort ?? '') === 'alphabet' ? 'selected' : '' ?>>Trier de A à Z</option>
+          <option value="date" <?= ($sort ?? '') === 'date' ? 'selected' : '' ?>>Trier par Date d'inscription</option>
+        </select>
+      </div>
+      
+      <button type="submit" class="btn btn-primary" style="padding:10px 20px;">Filtrer</button>
+      <?php if (!empty($search) || ($sort ?? 'id') !== 'id'): ?>
+        <a href="index.php?ctrl=user&action=index" class="btn btn-outline" style="padding:10px 20px;">Réinitialiser</a>
+      <?php endif; ?>
+    </form>
+  </div>
+
   <!-- TABLE -->
   <div class="table-card">
     <div class="table-wrap">

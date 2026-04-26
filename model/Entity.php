@@ -71,23 +71,43 @@ class User {
     public function setFollowers(int $n): void       { $this->followers = $n; }
     public function setFollowing(int $n): void       { $this->following = $n; }
     public function setIsAccepted(bool $b): void     { $this->isAccepted = $b; }
-
-    public static function fromArray(array $row): self {
-        return new self(
-            (int)($row['id']          ?? 0),
-            $row['nom']               ?? '',
-            $row['prenom']            ?? '',
-            $row['mail']              ?? '',
-            $row['password']          ?? '',
-            $row['role']              ?? 'user',
-            $row['type_compte']       ?? 'user',
-            $row['social_media_link'] ?? '',
-            $row['created_at']        ?? '',
-            (int)($row['followers']   ?? 0),
-            (int)($row['following']   ?? 0),
-            (bool)($row['is_accepted'] ?? false)
-        );
-    }
 }
 
+/**
+ * SessionManager — Gère la session utilisateur.
+ */
+class SessionManager
+{
+    public static function setUser(array $user): void
+    {
+        $_SESSION['user'] = $user;
+    }
 
+    public static function getUser(): ?array
+    {
+        return $_SESSION['user'] ?? null;
+    }
+
+    public static function isLoggedIn(): bool
+    {
+        return isset($_SESSION['user']);
+    }
+
+    public static function destroy(): void
+    {
+        unset($_SESSION['user']);
+        session_destroy();
+    }
+
+    public static function setFlash(string $type, string $message): void
+    {
+        $_SESSION['flash'] = ['type' => $type, 'message' => $message];
+    }
+
+    public static function getFlash(): ?array
+    {
+        $flash = $_SESSION['flash'] ?? null;
+        unset($_SESSION['flash']);
+        return $flash;
+    }
+}
