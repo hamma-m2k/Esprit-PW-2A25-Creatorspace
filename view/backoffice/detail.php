@@ -33,12 +33,18 @@ require_once __DIR__ . '/layout_back.php';
                     background:linear-gradient(135deg, var(--primary), var(--secondary));
                     display:flex; align-items:center; justify-content:center;
                     font-family:'Syne',sans-serif; font-size:2rem; font-weight:700;
-                    color:#fff; flex-shrink:0; box-shadow:0 4px 20px rgba(108,63,197,0.4);">
-          <?= $initiales ?>
+                    color:#fff; flex-shrink:0; box-shadow:0 4px 20px rgba(108,63,197,0.4);
+                    <?php if($item->getProfilePicture()): ?>background: url('<?= htmlspecialchars($item->getProfilePicture()) ?>') center/cover; color: transparent;<?php endif; ?>">
+          <?php if(!$item->getProfilePicture()): ?><?= $initiales ?><?php endif; ?>
         </div>
         <div>
           <div style="font-size:1.3rem; font-weight:700; color:var(--text);">
             <?= htmlspecialchars($item->getNom() . ' ' . $item->getPrenom()) ?>
+            <?php if ($item->getIsVerified()): ?>
+              <svg viewBox="0 0 24 24" width="20" height="20" style="vertical-align: middle; margin-left: 6px; fill: #1DA1F2;">
+                <path d="M22.5 12.5c0-.85-.68-1.55-1.53-1.55h-.16c.38-.63.6-1.37.6-2.15 0-2.33-1.89-4.22-4.22-4.22-.78 0-1.52.22-2.15.6v-.16c0-.85-.7-1.53-1.55-1.53h-2.98c-.85 0-1.55.68-1.55 1.53v.16c-.63-.38-1.37-.6-2.15-.6-2.33 0-4.22 1.89-4.22 4.22 0 .78.22 1.52.6 2.15h-.16c-.85 0-1.53.7-1.53 1.55v2.98c0 .85.68 1.55 1.53 1.55h.16c-.38.63-.6 1.37-.6 2.15 0 2.33 1.89 4.22 4.22 4.22.78 0 1.52-.22 2.15-.6v.16c0 .85.7 1.53 1.55 1.53h2.98c.85 0 1.55-.68 1.55-1.53v-.16c.63.38 1.37.6 2.15.6 2.33 0 4.22-1.89 4.22-4.22 0-.78-.22-1.52-.6-2.15h.16c.85 0 1.53-.7 1.53-1.55v-2.98zm-12.03 5.45l-4.14-4.14 1.41-1.41 2.73 2.73 6.64-6.64 1.41 1.41-8.05 8.05z"></path>
+              </svg>
+            <?php endif; ?>
           </div>
           <div style="color:var(--text3); font-size:0.82rem; margin-top:4px;">
             ID #<?= $item->getId() ?>
@@ -54,7 +60,9 @@ require_once __DIR__ . '/layout_back.php';
                     border-radius:8px; border:1px solid var(--border);">
           <span style="color:var(--text3); font-size:0.85rem;">Nom complet</span>
           <span style="color:var(--text); font-weight:600;">
-            <?= htmlspecialchars($item->getNom() . ' ' . $item->getPrenom()) ?>
+            <span style="<?= $item->getIsBanned() ? 'text-decoration: line-through; color: red;' : '' ?>">
+              <?= htmlspecialchars($item->getNom() . ' ' . $item->getPrenom()) ?>
+            </span>
           </span>
         </div>
 

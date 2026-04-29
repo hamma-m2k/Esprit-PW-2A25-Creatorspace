@@ -17,32 +17,32 @@
 
     <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(108,63,197,0.3);
                 border-radius:16px; padding:1.5rem; text-align:center;">
-      <div style="font-size:2.5rem; font-weight:700; color:#a855f7; font-family:'Syne',sans-serif;">
-        <?= $stats['total'] ?>
+      <div class="animate-number" data-target="<?= $stats['total'] ?>" style="font-size:2.5rem; font-weight:700; color:#a855f7; font-family:'Syne',sans-serif;">
+        0
       </div>
       <div style="font-size:0.9rem; color:#94a3b8; margin-top:0.5rem;">👥 Total utilisateurs</div>
     </div>
 
     <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(108,63,197,0.3);
                 border-radius:16px; padding:1.5rem; text-align:center;">
-      <div style="font-size:2.5rem; font-weight:700; color:#00C2CB; font-family:'Syne',sans-serif;">
-        <?= $stats['users'] ?>
+      <div class="animate-number" data-target="<?= $stats['users'] ?>" style="font-size:2.5rem; font-weight:700; color:#00C2CB; font-family:'Syne',sans-serif;">
+        0
       </div>
       <div style="font-size:0.9rem; color:#94a3b8; margin-top:0.5rem;">👤 Utilisateurs</div>
     </div>
 
     <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(108,63,197,0.3);
                 border-radius:16px; padding:1.5rem; text-align:center;">
-      <div style="font-size:2.5rem; font-weight:700; color:#9B5DE5; font-family:'Syne',sans-serif;">
-        <?= $stats['admins'] ?>
+      <div class="animate-number" data-target="<?= $stats['admins'] ?>" style="font-size:2.5rem; font-weight:700; color:#9B5DE5; font-family:'Syne',sans-serif;">
+        0
       </div>
       <div style="font-size:0.9rem; color:#94a3b8; margin-top:0.5rem;">🔐 Administrateurs</div>
     </div>
 
     <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(108,63,197,0.3);
                 border-radius:16px; padding:1.5rem; text-align:center;">
-      <div style="font-size:2.5rem; font-weight:700; color:#38a169; font-family:'Syne',sans-serif;">
-        <?= $stats['new_month'] ?>
+      <div class="animate-number" data-target="<?= $stats['new_month'] ?>" style="font-size:2.5rem; font-weight:700; color:#38a169; font-family:'Syne',sans-serif;">
+        0
       </div>
       <div style="font-size:0.9rem; color:#94a3b8; margin-top:0.5rem;">🆕 Nouveaux ce mois</div>
     </div>
@@ -54,24 +54,24 @@
 
     <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(14,116,144,0.4);
                 border-radius:16px; padding:1.5rem; text-align:center;">
-      <div style="font-size:2.5rem; font-weight:700; color:#0e7490; font-family:'Syne',sans-serif;">
-        <?= $stats['createurs'] ?>
+      <div class="animate-number" data-target="<?= $stats['createurs'] ?>" style="font-size:2.5rem; font-weight:700; color:#0e7490; font-family:'Syne',sans-serif;">
+        0
       </div>
       <div style="font-size:0.9rem; color:#94a3b8; margin-top:0.5rem;">🎨 Créateurs de contenu</div>
     </div>
 
     <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(124,58,237,0.4);
                 border-radius:16px; padding:1.5rem; text-align:center;">
-      <div style="font-size:2.5rem; font-weight:700; color:#7c3aed; font-family:'Syne',sans-serif;">
-        <?= $stats['societes'] ?>
+      <div class="animate-number" data-target="<?= $stats['societes'] ?>" style="font-size:2.5rem; font-weight:700; color:#7c3aed; font-family:'Syne',sans-serif;">
+        0
       </div>
       <div style="font-size:0.9rem; color:#94a3b8; margin-top:0.5rem;">🏢 Sociétés</div>
     </div>
 
     <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(16,185,129,0.4);
                 border-radius:16px; padding:1.5rem; text-align:center;">
-      <div style="font-size:2.5rem; font-weight:700; color:#10b981; font-family:'Syne',sans-serif;">
-        <?= $stats['normaux'] ?>
+      <div class="animate-number" data-target="<?= $stats['normaux'] ?>" style="font-size:2.5rem; font-weight:700; color:#10b981; font-family:'Syne',sans-serif;">
+        0
       </div>
       <div style="font-size:0.9rem; color:#94a3b8; margin-top:0.5rem;">👤 Utilisateurs normaux</div>
     </div>
@@ -82,8 +82,8 @@
                   transition:transform 0.2s; cursor:pointer;"
            onmouseover="this.style.transform='translateY(-3px)'"
            onmouseout="this.style.transform='translateY(0)'">
-        <div style="font-size:2.5rem; font-weight:700; color:var(--danger); font-family:'Syne',sans-serif;">
-          <?= $stats['demandes_attente'] ?>
+        <div class="animate-number" data-target="<?= $stats['demandes_attente'] ?>" style="font-size:2.5rem; font-weight:700; color:var(--danger); font-family:'Syne',sans-serif;">
+          0
         </div>
         <div style="font-size:0.9rem; color:#94a3b8; margin-top:0.5rem;">📋 Demandes en attente</div>
         <div style="font-size:0.75rem; color:var(--danger); margin-top:6px; font-weight:600;">

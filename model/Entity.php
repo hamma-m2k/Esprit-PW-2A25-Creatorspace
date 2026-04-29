@@ -17,6 +17,9 @@ class User {
     private int    $followers;
     private int    $following;
     private bool   $isAccepted;
+    private bool   $isVerified;
+    private bool   $isBanned;
+    private string $profilePicture;
 
     public function __construct(
         int    $id         = 0,
@@ -30,7 +33,10 @@ class User {
         string $createdAt  = '',
         int    $followers  = 0,
         int    $following  = 0,
-        bool   $isAccepted = false
+        bool   $isAccepted = false,
+        bool   $isVerified = false,
+        bool   $isBanned   = false,
+        string $profilePicture = ''
     ) {
         $this->id         = $id;
         $this->nom        = $nom;
@@ -44,6 +50,9 @@ class User {
         $this->followers  = $followers;
         $this->following  = $following;
         $this->isAccepted = $isAccepted;
+        $this->isVerified = $isVerified;
+        $this->isBanned   = $isBanned;
+        $this->profilePicture = $profilePicture;
     }
 
     public function getId(): int          { return $this->id; }
@@ -58,6 +67,9 @@ class User {
     public function getFollowers(): int     { return $this->followers; }
     public function getFollowing(): int     { return $this->following; }
     public function getIsAccepted(): bool   { return $this->isAccepted; }
+    public function getIsVerified(): bool   { return $this->isVerified; }
+    public function getIsBanned(): bool     { return $this->isBanned; }
+    public function getProfilePicture(): string { return $this->profilePicture; }
 
     public function setId(int $id): void             { $this->id = $id; }
     public function setNom(string $nom): void        { $this->nom = $nom; }
@@ -71,6 +83,9 @@ class User {
     public function setFollowers(int $n): void       { $this->followers = $n; }
     public function setFollowing(int $n): void       { $this->following = $n; }
     public function setIsAccepted(bool $b): void     { $this->isAccepted = $b; }
+    public function setIsVerified(bool $b): void     { $this->isVerified = $b; }
+    public function setIsBanned(bool $b): void       { $this->isBanned = $b; }
+    public function setProfilePicture(string $p): void { $this->profilePicture = $p; }
 }
 
 /**

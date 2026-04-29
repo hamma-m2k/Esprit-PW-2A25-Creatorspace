@@ -58,7 +58,7 @@
           </div>
 
           <!-- Barre -->
-          <div style="width: 100%; height: <?= $heightPercent ?>%; background: <?= $isCurrentMonth ? 'linear-gradient(to top, #6C3FC5, #00C2CB)' : 'rgba(108, 63, 197, 0.4)' ?>; border-radius: 6px 6px 0 0; transition: all 0.3s ease; cursor: pointer; border: 1px solid rgba(108, 63, 197, 0.6);"
+          <div class="animate-bar" data-target-height="<?= $heightPercent ?>%" style="width: 100%; height: 0%; background: <?= $isCurrentMonth ? 'linear-gradient(to top, #6C3FC5, #00C2CB)' : 'rgba(108, 63, 197, 0.4)' ?>; border-radius: 6px 6px 0 0; transition: height 1.2s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.3s ease, transform 0.3s ease; cursor: pointer; border: 1px solid rgba(108, 63, 197, 0.6);"
                onmouseover="this.style.background='#6C3FC5'; this.previousElementSibling.style.opacity='1'; this.style.transform='scaleX(1.05)';"
                onmouseout="this.style.background='<?= $isCurrentMonth ? 'linear-gradient(to top, #6C3FC5, #00C2CB)' : 'rgba(108, 63, 197, 0.4)' ?>'; this.previousElementSibling.style.opacity='0'; this.style.transform='none';">
           </div>
@@ -76,14 +76,14 @@
   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-top: 40px;">
     <div class="table-card" style="padding: 24px; text-align: center;">
       <div style="font-size: 0.9rem; color: var(--text3); margin-bottom: 8px;">Moyenne mensuelle</div>
-      <div style="font-size: 2rem; font-family: 'Syne', sans-serif; font-weight: 800; color: #00C2CB;">
-        <?= round(array_sum($inscriptionsStats) / 12, 1) ?>
+      <div class="animate-number" data-target="<?= round(array_sum($inscriptionsStats) / 12, 1) ?>" style="font-size: 2rem; font-family: 'Syne', sans-serif; font-weight: 800; color: #00C2CB;">
+        0
       </div>
     </div>
     <div class="table-card" style="padding: 24px; text-align: center;">
       <div style="font-size: 0.9rem; color: var(--text3); margin-bottom: 8px;">Total annuel</div>
-      <div style="font-size: 2rem; font-family: 'Syne', sans-serif; font-weight: 800; color: #6C3FC5;">
-        <?= array_sum($inscriptionsStats) ?>
+      <div class="animate-number" data-target="<?= array_sum($inscriptionsStats) ?>" style="font-size: 2rem; font-family: 'Syne', sans-serif; font-weight: 800; color: #6C3FC5;">
+        0
       </div>
     </div>
     <div class="table-card" style="padding: 24px; text-align: center;">

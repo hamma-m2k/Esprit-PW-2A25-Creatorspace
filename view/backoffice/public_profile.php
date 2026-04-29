@@ -94,9 +94,20 @@ $isCreateur = ($item->getTypeCompte() ?: '') === 'createur';
 
       <!-- Header : avatar + nom + badge + bouton follow -->
       <div class="ig-head">
-        <div class="ig-avatar"><?= $initiales ?></div>
+        <div class="ig-avatar" style="<?php if($item->getProfilePicture()): ?>background: url('<?= htmlspecialchars($item->getProfilePicture()) ?>') center/cover; color: transparent;<?php endif; ?>">
+          <?php if(!$item->getProfilePicture()): ?><?= $initiales ?><?php endif; ?>
+        </div>
         <div class="ig-head-info">
-          <h1 class="ig-name"><?= $fullName ?></h1>
+          <h1 class="ig-name">
+            <span style="<?= $item->getIsBanned() ? 'text-decoration: line-through; color: red;' : '' ?>">
+              <?= $fullName ?>
+            </span>
+            <?php if ($item->getIsVerified()): ?>
+              <svg viewBox="0 0 24 24" width="22" height="22" style="vertical-align: middle; margin-left: 4px; fill: #1DA1F2;">
+                <path d="M22.5 12.5c0-.85-.68-1.55-1.53-1.55h-.16c.38-.63.6-1.37.6-2.15 0-2.33-1.89-4.22-4.22-4.22-.78 0-1.52.22-2.15.6v-.16c0-.85-.7-1.53-1.55-1.53h-2.98c-.85 0-1.55.68-1.55 1.53v.16c-.63-.38-1.37-.6-2.15-.6-2.33 0-4.22 1.89-4.22 4.22 0 .78.22 1.52.6 2.15h-.16c-.85 0-1.53.7-1.53 1.55v2.98c0 .85.68 1.55 1.53 1.55h.16c-.38.63-.6 1.37-.6 2.15 0 2.33 1.89 4.22 4.22 4.22.78 0 1.52-.22 2.15-.6v.16c0 .85.7 1.53 1.55 1.53h2.98c.85 0 1.55-.68 1.55-1.53v-.16c.63.38 1.37.6 2.15.6 2.33 0 4.22-1.89 4.22-4.22 0-.78-.22-1.52-.6-2.15h.16c.85 0 1.53-.7 1.53-1.55v-2.98zm-12.03 5.45l-4.14-4.14 1.41-1.41 2.73 2.73 6.64-6.64 1.41 1.41-8.05 8.05z"></path>
+              </svg>
+            <?php endif; ?>
+          </h1>
           <p class="ig-handle"><?= htmlspecialchars($handle) ?></p>
           <span class="ig-badge"><?= $typeLabel ?></span>
         </div>

@@ -45,12 +45,15 @@ class EntityController
             $row['created_at']        ?? '',
             (int)($row['followers']   ?? 0),
             (int)($row['following']   ?? 0),
-            (bool)($row['is_accepted'] ?? false)
+            (bool)($row['is_accepted'] ?? false),
+            (bool)($row['is_verified'] ?? false),
+            (bool)($row['is_banned']   ?? false),
+            $row['profile_picture']   ?? ''
         );
     }
 
     private function getAllUsers(string $search = '', string $sort = 'id'): array {
-        $query = "SELECT id, nom, prenom, mail, role, type_compte, social_media_link, is_accepted, created_at, followers, following FROM `user`";
+        $query = "SELECT id, nom, prenom, mail, role, type_compte, social_media_link, is_accepted, is_verified, is_banned, profile_picture, created_at, followers, following FROM `user`";
         $params = [];
         
         if ($search !== '') {
@@ -270,37 +273,39 @@ class EntityController
             unset($_SESSION['success_register']);
         }
 
+        $error = '';
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mail     = trim($_POST['mail']     ?? '');
             $password = trim($_POST['password'] ?? '');
 
             if ($mail === '' || $password === '') {
-                $this->redirectError('Veuillez remplir tous les champs.');
-            }
-
-            $user = $this->getUserByMail($mail);
-            if (!$user || md5($password) !== $user->getPassword()) {
-                $this->redirectError('Email ou mot de passe incorrect.');
-            }
-
-            if (!$user->getIsAccepted()) {
-                $this->redirectError("Votre compte est en attente d'acceptation par l'administrateur.");
-            }
-
-            $_SESSION['user_id'] = $user->getId();
-            $_SESSION['nom']     = $user->getNom();
-            $_SESSION['role']    = $user->getRole();
-            $_SESSION['mail']    = $user->getMail();
-
-            if ($user->getRole() === 'admin') {
-                header('Location: index.php?ctrl=user&action=dashboard');
+                $error = 'Veuillez remplir tous les champs.';
             } else {
-                header('Location: index.php?ctrl=user&action=profile');
+                $user = $this->getUserByMail($mail);
+                if (!$user || md5($password) !== $user->getPassword()) {
+                    $error = 'Email ou mot de passe incorrect.';
+                } elseif (!$user->getIsAccepted()) {
+                    $error = "Votre compte est en attente d'acceptation par l'administrateur.";
+                } elseif ($user->getIsBanned()) {
+                    $error = "Ton compte a ete banner merci de votre attente.";
+                } else {
+                    $_SESSION['user_id'] = $user->getId();
+                    $_SESSION['nom']     = $user->getNom();
+                    $_SESSION['role']    = $user->getRole();
+                    $_SESSION['mail']    = $user->getMail();
+                    $_SESSION['profile_picture'] = $user->getProfilePicture();
+
+                    if ($user->getRole() === 'admin') {
+                        header('Location: index.php?ctrl=user&action=dashboard');
+                    } else {
+                        header('Location: index.php?ctrl=user&action=profile');
+                    }
+                    exit;
+                }
             }
-            exit;
         }
 
-        $error       = '';
         $msgRegister = $_SESSION['msg_register'] ?? '';
         unset($_SESSION['msg_register']);
         $this->render('frontoffice/login', compact('error', 'success', 'msgRegister'));
@@ -462,6 +467,7 @@ class EntityController
             'name'     => $_SESSION['nom']  ?? '',
             'role'     => $_SESSION['role'] ?? '',
             'color'    => '#6C3FC5',
+            'profile_picture' => $_SESSION['profile_picture'] ?? ''
         ];
     }
 
@@ -521,6 +527,38 @@ class EntityController
         }
         $this->deleteUser($id);
         header('Location: index.php?ctrl=user&action=index&success=suppression');
+        exit;
+    }
+
+    public function toggleBan(): void
+    {
+        $this->checkAdmin();
+        $id = (int)($_GET['id'] ?? 0);
+        if ($id === (int)($_SESSION['user_id'] ?? 0)) {
+            header('Location: index.php?ctrl=user&action=index');
+            exit;
+        }
+        $user = $this->getUserById($id);
+        if ($user) {
+            $newStatus = $user->getIsBanned() ? 0 : 1;
+            $stmt = $this->pdo->prepare("UPDATE `user` SET is_banned = ? WHERE id = ?");
+            $stmt->execute([$newStatus, $id]);
+        }
+        header('Location: index.php?ctrl=user&action=index&success=ban');
+        exit;
+    }
+
+    public function toggleVerify(): void
+    {
+        $this->checkAdmin();
+        $id = (int)($_GET['id'] ?? 0);
+        $user = $this->getUserById($id);
+        if ($user) {
+            $newStatus = $user->getIsVerified() ? 0 : 1;
+            $stmt = $this->pdo->prepare("UPDATE `user` SET is_verified = ? WHERE id = ?");
+            $stmt->execute([$newStatus, $id]);
+        }
+        header('Location: index.php?ctrl=user&action=index&success=verify');
         exit;
     }
 
@@ -763,6 +801,52 @@ class EntityController
         $demandesEnAttente = $this->countDemandesEnAttente();
         $successProfile    = '';
         $this->render('backoffice/profile', compact('item', 'profile', 'errors', 'page', 'currentUser', 'demandesEnAttente', 'successProfile'));
+    }
+
+    public function uploadAvatar(): void
+    {
+        $this->checkLogged();
+        $userId = (int)$_SESSION['user_id'];
+        $userObj = $this->getUserById($userId);
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['profile_picture'])) {
+            $file = $_FILES['profile_picture'];
+            
+            if ($file['error'] === UPLOAD_ERR_OK) {
+                $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+                $fileType = mime_content_type($file['tmp_name']);
+                
+                if (in_array($fileType, $allowedTypes)) {
+                    $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+                    $filename = 'avatar_' . $userId . '_' . time() . '.' . $ext;
+                    $uploadDir = __DIR__ . '/../uploads/avatars/';
+                    
+                    if (!is_dir($uploadDir)) {
+                        mkdir($uploadDir, 0777, true);
+                    }
+                    
+                    if (move_uploaded_file($file['tmp_name'], $uploadDir . $filename)) {
+                        // Delete old avatar if exists
+                        $oldAvatar = $userObj->getProfilePicture();
+                        if ($oldAvatar && file_exists(__DIR__ . '/../' . $oldAvatar)) {
+                            unlink(__DIR__ . '/../' . $oldAvatar);
+                        }
+                        
+                        $filepath = 'uploads/avatars/' . $filename;
+                        
+                        $stmt = $this->pdo->prepare("UPDATE `user` SET profile_picture = ? WHERE id = ?");
+                        $stmt->execute([$filepath, $userId]);
+                        
+                        $_SESSION['profile_picture'] = $filepath;
+                        $_SESSION['success'] = "Photo de profil mise à jour.";
+                    }
+                } else {
+                    $_SESSION['app_error'] = "Format d'image non supporté.";
+                }
+            }
+        }
+        header('Location: index.php?ctrl=user&action=profile');
+        exit;
     }
 
     public function deleteOwn(): void

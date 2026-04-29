@@ -19,6 +19,8 @@
       if     ($_GET['success'] === 'ajout')       echo '✅ Utilisateur ajouté avec succès.';
       elseif ($_GET['success'] === 'modif')       echo '✅ Utilisateur modifié avec succès.';
       elseif ($_GET['success'] === 'suppression') echo '✅ Utilisateur supprimé avec succès.';
+      elseif ($_GET['success'] === 'ban')         echo '✅ Statut de bannissement mis à jour.';
+      elseif ($_GET['success'] === 'verify')      echo '✅ Statut de vérification mis à jour.';
       ?>
     </span>
   </div>
@@ -75,7 +77,16 @@
           <?php else: ?>
           <?php foreach ($users as $u): ?>
           <tr>
-            <td style="font-weight:600; color:var(--text);"><?= htmlspecialchars($u->getNom()) ?></td>
+            <td style="font-weight:600; color:var(--text);">
+              <span style="<?= $u->getIsBanned() ? 'text-decoration: line-through; color: red;' : '' ?>">
+                <?= htmlspecialchars($u->getNom()) ?>
+              </span>
+              <?php if ($u->getIsVerified()): ?>
+                <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align: middle; margin-left: 4px; fill: #1DA1F2;">
+                  <path d="M22.5 12.5c0-.85-.68-1.55-1.53-1.55h-.16c.38-.63.6-1.37.6-2.15 0-2.33-1.89-4.22-4.22-4.22-.78 0-1.52.22-2.15.6v-.16c0-.85-.7-1.53-1.55-1.53h-2.98c-.85 0-1.55.68-1.55 1.53v.16c-.63-.38-1.37-.6-2.15-.6-2.33 0-4.22 1.89-4.22 4.22 0 .78.22 1.52.6 2.15h-.16c-.85 0-1.53.7-1.53 1.55v2.98c0 .85.68 1.55 1.53 1.55h.16c-.38.63-.6 1.37-.6 2.15 0 2.33 1.89 4.22 4.22 4.22.78 0 1.52-.22 2.15-.6v.16c0 .85.7 1.53 1.55 1.53h2.98c.85 0 1.55-.68 1.55-1.53v-.16c.63.38 1.37.6 2.15.6 2.33 0 4.22-1.89 4.22-4.22 0-.78-.22-1.52-.6-2.15h.16c.85 0 1.53-.7 1.53-1.55v-2.98zm-12.03 5.45l-4.14-4.14 1.41-1.41 2.73 2.73 6.64-6.64 1.41 1.41-8.05 8.05z"></path>
+                </svg>
+              <?php endif; ?>
+            </td>
             <td style="color:var(--text2);"><?= htmlspecialchars($u->getPrenom()) ?></td>
             <td style="color:var(--text2);"><?= htmlspecialchars($u->getMail()) ?></td>
             <td>
@@ -94,12 +105,26 @@
             <td>
               <div class="table-actions">
                 <a href="index.php?ctrl=user&action=detail&id=<?= $u->getId() ?>">
-                  <button class="action-btn" title="Voir détail"
+                  <button class="action-btn" title="Voir profil"
                           style="color:var(--secondary); border-color:var(--secondary);">
                     👁️
                   </button>
                 </a>
+                
+                <a href="index.php?ctrl=user&action=toggleVerify&id=<?= $u->getId() ?>">
+                  <button class="action-btn" title="<?= $u->getIsVerified() ? 'Annuler vérification' : 'Vérifier' ?>"
+                          style="color:#1DA1F2; border-color:#1DA1F2;">
+                    <?= $u->getIsVerified() ? '➖' : '✔️' ?>
+                  </button>
+                </a>
+
                 <?php if ($u->getId() !== (int)($currentUserId ?? 0)): ?>
+                <a href="index.php?ctrl=user&action=toggleBan&id=<?= $u->getId() ?>">
+                  <button class="action-btn" title="<?= $u->getIsBanned() ? 'Débannir' : 'Bannir' ?>"
+                          style="color:orange; border-color:orange;">
+                    <?= $u->getIsBanned() ? '🔓' : '🔨' ?>
+                  </button>
+                </a>
                 <a href="index.php?ctrl=user&action=delete&id=<?= $u->getId() ?>"
                    onclick="return window.confirm('Confirmer la suppression de cet utilisateur ?')">
                   <button class="action-btn del" title="Supprimer">🗑️</button>

@@ -70,8 +70,8 @@ require_once __DIR__ . '/../layout/header.php';
       </nav>
       <div class="sidebar-footer">
         <div class="sidebar-user">
-          <div class="sidebar-avatar">
-            <?= htmlspecialchars($currentUser['initials'] ?? 'AD') ?>
+          <div class="sidebar-avatar" style="<?php if(!empty($currentUser['profile_picture'])): ?>background: url('<?= htmlspecialchars($currentUser['profile_picture']) ?>') center/cover; color: transparent;<?php endif; ?>">
+            <?php if(empty($currentUser['profile_picture'])): ?><?= htmlspecialchars($currentUser['initials'] ?? 'AD') ?><?php endif; ?>
           </div>
           <div class="sidebar-user-info">
             <div class="sidebar-uname"><?= htmlspecialchars($currentUser['name'] ?? 'Admin') ?></div>
