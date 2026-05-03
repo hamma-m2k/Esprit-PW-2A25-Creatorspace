@@ -7,12 +7,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/variables.css" />
-  <link rel="stylesheet" href="assets/css/base.css" />
-  <link rel="stylesheet" href="assets/css/components.css" />
-  <link rel="stylesheet" href="assets/css/front.css" />
-  <link rel="stylesheet" href="assets/css/back.css" />
-  <link rel="stylesheet" href="assets/css/responsive.css" />
+  <link rel="stylesheet" href="View/assets/css/variables.css" />
+  <link rel="stylesheet" href="View/assets/css/base.css" />
+  <link rel="stylesheet" href="View/assets/css/components.css" />
+  <link rel="stylesheet" href="View/assets/css/front.css" />
+  <link rel="stylesheet" href="View/assets/css/back.css" />
+  <link rel="stylesheet" href="View/assets/css/responsive.css" />
 </head>
 <body>
 

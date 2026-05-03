@@ -20,58 +20,80 @@
   ?>
 
   <div class="table-card" style="padding: 40px; margin-top: 20px;">
-    <h3 style="margin-bottom: 40px; font-family: 'Syne', sans-serif; font-size: 1.2rem; color: var(--text);">
-      Inscriptions par mois
-    </h3>
-
-    <!-- GRAPHIQUE CONTENANT -->
-    <div style="height: 350px; border-left: 2px solid rgba(255,255,255,0.1); border-bottom: 2px solid rgba(255,255,255,0.1); position: relative; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 20px 0 60px;">
-      
-      <!-- ÉCHELLE Y -->
-      <div style="position: absolute; left: 0; bottom: 0; height: 100%; width: 50px; display: flex; flex-direction: column-reverse; justify-content: space-between; padding-bottom: 2px; color: var(--text3); font-size: 0.8rem; text-align: right; padding-right: 10px;">
-        <span>0</span>
-        <span><?= round($maxVal * 0.25) ?></span>
-        <span><?= round($maxVal * 0.5) ?></span>
-        <span><?= round($maxVal * 0.75) ?></span>
-        <span><?= $maxVal ?></span>
-      </div>
-
-      <!-- LIGNES DE GRILLE -->
-      <div style="position: absolute; left: 60px; right: 20px; top: 0; bottom: 0; pointer-events: none;">
-        <div style="position: absolute; width: 100%; border-top: 1px dashed rgba(255,255,255,0.05); top: 0%;"></div>
-        <div style="position: absolute; width: 100%; border-top: 1px dashed rgba(255,255,255,0.05); top: 25%;"></div>
-        <div style="position: absolute; width: 100%; border-top: 1px dashed rgba(255,255,255,0.05); top: 50%;"></div>
-        <div style="position: absolute; width: 100%; border-top: 1px dashed rgba(255,255,255,0.05); top: 75%;"></div>
-      </div>
-
-      <!-- BARRES -->
-      <?php foreach ($inscriptionsStats as $mois => $count): ?>
-        <?php 
-          $heightPercent = ($count / $maxVal) * 100;
-          $isCurrentMonth = ((int)date('n') === $mois);
-        ?>
-        <div style="flex: 1; margin: 0 8px; display: flex; flex-direction: column; align-items: center; position: relative; max-width: 60px;">
-          
-          <!-- Tooltip (au survol) -->
-          <div class="chart-tooltip" style="position: absolute; bottom: calc(<?= $heightPercent ?>% + 10px); background: #6C3FC5; color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; white-space: nowrap;">
-            <?= $count ?> inscrit(s)
-          </div>
-
-          <!-- Barre -->
-          <div class="animate-bar" data-target-height="<?= $heightPercent ?>%" style="width: 100%; height: 0%; background: <?= $isCurrentMonth ? 'linear-gradient(to top, #6C3FC5, #00C2CB)' : 'rgba(108, 63, 197, 0.4)' ?>; border-radius: 6px 6px 0 0; transition: height 1.2s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.3s ease, transform 0.3s ease; cursor: pointer; border: 1px solid rgba(108, 63, 197, 0.6);"
-               onmouseover="this.style.background='#6C3FC5'; this.previousElementSibling.style.opacity='1'; this.style.transform='scaleX(1.05)';"
-               onmouseout="this.style.background='<?= $isCurrentMonth ? 'linear-gradient(to top, #6C3FC5, #00C2CB)' : 'rgba(108, 63, 197, 0.4)' ?>'; this.previousElementSibling.style.opacity='0'; this.style.transform='none';">
-          </div>
-
-          <!-- Étiquette Mois -->
-          <div style="position: absolute; top: 100%; padding-top: 10px; color: var(--text3); font-size: 0.8rem; font-weight: 600;">
-            <?= $moisFr[$mois] ?>
-          </div>
-        </div>
-      <?php endforeach; ?>
-
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+      <h3 style="font-family: 'Syne', sans-serif; font-size: 1.2rem; color: var(--text); margin: 0;">
+        Inscriptions par mois
+      </h3>
+      <button id="btnExportStats" class="btn btn-primary" style="padding: 10px 20px; background-color: #e74c3c; border-color: #c0392b;">
+        📄 Export PDF (avec Graphique)
+      </button>
     </div>
+
+    <!-- GRAPHIQUE CHART.JS -->
+    <div style="height: 400px; width: 100%;">
+      <canvas id="inscriptionsChart"></canvas>
+    </div>
+
+    <!-- Hidden form to send chart image to server -->
+    <form id="exportForm" method="POST" action="index.php?ctrl=user&action=exportStats" style="display:none;">
+      <input type="hidden" name="chartImage" id="chartImageInput">
+    </form>
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const ctx = document.getElementById('inscriptionsChart').getContext('2d');
+      
+      const labels = <?= json_encode(array_values($moisFr)) ?>;
+      const dataValues = <?= json_encode(array_values($inscriptionsStats)) ?>;
+
+      const myChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Inscriptions',
+            data: dataValues,
+            backgroundColor: 'rgba(108, 63, 197, 0.6)',
+            borderColor: 'rgba(108, 63, 197, 1)',
+            borderWidth: 2,
+            borderRadius: 8,
+            hoverBackgroundColor: 'rgba(108, 63, 197, 0.9)'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: '#94a3b8' }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: '#94a3b8' }
+            }
+          },
+          plugins: {
+            legend: { display: false }
+          },
+          animation: {
+            duration: 1000,
+            easing: 'easeOutQuart'
+          }
+        }
+      });
+
+      // Export logic
+      document.getElementById('btnExportStats').addEventListener('click', function() {
+        const chartImage = myChart.toBase64Image();
+        document.getElementById('chartImageInput').value = chartImage;
+        document.getElementById('exportForm').submit();
+      });
+    });
+  </script>
 
   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-top: 40px;">
     <div class="table-card" style="padding: 24px; text-align: center;">

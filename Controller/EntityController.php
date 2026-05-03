@@ -530,6 +530,128 @@ class EntityController
         exit;
     }
 
+    public function exportPdf(): void
+    {
+        $this->checkAdmin();
+        require_once __DIR__ . '/../View/backoffice/fpdf/fpdf.php';
+        
+        $users = $this->getAllUsers('', 'id');
+        
+        $pdf = new FPDF();
+        $pdf->AddPage();
+        
+        // --- HEADER ---
+        $pdf->SetFont('Helvetica', 'B', 20);
+        $pdf->SetTextColor(108, 63, 197); // Purple
+        $pdf->Cell(0, 10, 'CREATOR SPACE', 0, 1, 'C');
+        $pdf->SetFont('Helvetica', '', 12);
+        $pdf->SetTextColor(100, 100, 100);
+        $pdf->Cell(0, 10, 'Liste officielle des utilisateurs', 0, 1, 'C');
+        $pdf->Ln(10);
+        
+        // --- TABLE HEADER ---
+        $pdf->SetFillColor(108, 63, 197); // Purple background
+        $pdf->SetTextColor(255, 255, 255); // White text
+        $pdf->SetDrawColor(80, 40, 150);
+        $pdf->SetLineWidth(.3);
+        $pdf->SetFont('Helvetica', 'B', 12);
+        
+        $pdf->Cell(45, 12, 'Nom', 1, 0, 'C', true);
+        $pdf->Cell(45, 12, utf8_decode('Prénom'), 1, 0, 'C', true);
+        $pdf->Cell(70, 12, 'Email', 1, 0, 'C', true);
+        $pdf->Cell(30, 12, utf8_decode('Rôle'), 1, 1, 'C', true);
+        
+        // --- TABLE ROWS ---
+        $pdf->SetTextColor(50, 50, 50);
+        $pdf->SetFont('Helvetica', '', 11);
+        $fill = false;
+        $pdf->SetFillColor(245, 245, 255); // Very light purple for zebra effect
+        
+        foreach ($users as $u) {
+            $pdf->Cell(45, 10, utf8_decode($u->getNom()), 1, 0, 'L', $fill);
+            $pdf->Cell(45, 10, utf8_decode($u->getPrenom()), 1, 0, 'L', $fill);
+            $pdf->Cell(70, 10, utf8_decode($u->getMail()), 1, 0, 'L', $fill);
+            $pdf->Cell(30, 10, utf8_decode($u->getRole()), 1, 1, 'C', $fill);
+            $fill = !$fill;
+        }
+        
+        // --- FOOTER ---
+        $pdf->Ln(10);
+        $pdf->SetFont('Helvetica', 'I', 8);
+        $pdf->SetTextColor(150, 150, 150);
+        $pdf->Cell(0, 10, 'Edite par Creator Space le ' . date('d/m/Y H:i'), 0, 0, 'C');
+        
+        $pdf->Output('D', 'CreatorSpace_Utilisateurs.pdf');
+        exit;
+    }
+
+    public function exportStats(): void
+    {
+        $this->checkAdmin();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_POST['chartImage'])) {
+            header('Location: index.php?ctrl=user&action=statistics');
+            exit;
+        }
+
+        require_once __DIR__ . '/../View/backoffice/fpdf/fpdf.php';
+        
+        $imgData = $_POST['chartImage'];
+        $imgData = str_replace('data:image/png;base64,', '', $imgData);
+        $imgData = str_replace(' ', '+', $imgData);
+        $imgBinary = base64_decode($imgData);
+        
+        $tmpFile = __DIR__ . '/../View/backoffice/fpdf/temp_chart.png';
+        file_put_contents($tmpFile, $imgBinary);
+
+        $pdf = new FPDF();
+        $pdf->AddPage();
+        
+        $pdf->SetFont('Helvetica', 'B', 20);
+        $pdf->SetTextColor(108, 63, 197);
+        $pdf->Cell(0, 10, 'CREATOR SPACE', 0, 1, 'C');
+        $pdf->SetFont('Helvetica', '', 12);
+        $pdf->SetTextColor(100, 100, 100);
+        $pdf->Cell(0, 10, utf8_decode('Statistiques de la plateforme'), 0, 1, 'C');
+        $pdf->Ln(10);
+
+        if (file_exists($tmpFile)) {
+            $pdf->Image($tmpFile, 15, 40, 180);
+        }
+        $pdf->Ln(110);
+
+        $stats = [
+            'total'            => $this->countAllUsers(),
+            'admins'           => $this->countUsersByRole('admin'),
+            'createurs'        => $this->countUsersByType('createur'),
+            'societes'         => $this->countUsersByType('societe'),
+        ];
+
+        $pdf->SetFont('Helvetica', 'B', 14);
+        $pdf->SetTextColor(108, 63, 197);
+        $pdf->Cell(0, 10, utf8_decode('Résumé des données'), 0, 1, 'L');
+        $pdf->Ln(5);
+
+        $pdf->SetFont('Helvetica', '', 12);
+        $pdf->SetTextColor(50, 50, 50);
+        $pdf->Cell(95, 10, 'Total utilisateurs:', 0, 0);
+        $pdf->Cell(95, 10, $stats['total'], 0, 1);
+        $pdf->Cell(95, 10, 'Administrateurs:', 0, 0);
+        $pdf->Cell(95, 10, $stats['admins'], 0, 1);
+        $pdf->Cell(95, 10, utf8_decode('Créateurs de contenu:'), 0, 0);
+        $pdf->Cell(95, 10, $stats['createurs'], 0, 1);
+        $pdf->Cell(95, 10, utf8_decode('Sociétés:'), 0, 0);
+        $pdf->Cell(95, 10, $stats['societes'], 0, 1);
+
+        $pdf->Ln(20);
+        $pdf->SetFont('Helvetica', 'I', 8);
+        $pdf->SetTextColor(150, 150, 150);
+        $pdf->Cell(0, 10, 'Edite par Creator Space le ' . date('d/m/Y H:i'), 0, 0, 'C');
+
+        $pdf->Output('D', 'CreatorSpace_Stats.pdf');
+        if (file_exists($tmpFile)) unlink($tmpFile);
+        exit;
+    }
+
     public function toggleBan(): void
     {
         $this->checkAdmin();
@@ -819,7 +941,7 @@ class EntityController
                 if (in_array($fileType, $allowedTypes)) {
                     $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
                     $filename = 'avatar_' . $userId . '_' . time() . '.' . $ext;
-                    $uploadDir = __DIR__ . '/../uploads/avatars/';
+                    $uploadDir = __DIR__ . '/../View/uploads/avatars/';
                     
                     if (!is_dir($uploadDir)) {
                         mkdir($uploadDir, 0777, true);
@@ -832,7 +954,7 @@ class EntityController
                             unlink(__DIR__ . '/../' . $oldAvatar);
                         }
                         
-                        $filepath = 'uploads/avatars/' . $filename;
+                        $filepath = 'View/uploads/avatars/' . $filename;
                         
                         $stmt = $this->pdo->prepare("UPDATE `user` SET profile_picture = ? WHERE id = ?");
                         $stmt->execute([$filepath, $userId]);

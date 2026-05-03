@@ -47,6 +47,7 @@
       </div>
       
       <button type="submit" class="btn btn-primary" style="padding:10px 20px;">Filtrer</button>
+      <a href="index.php?ctrl=user&action=exportPdf" class="btn btn-primary" style="padding:10px 20px; background-color:#e74c3c; border-color:#c0392b; text-decoration:none;">📄 Export PDF</a>
       <?php if (!empty($search) || ($sort ?? 'id') !== 'id'): ?>
         <a href="index.php?ctrl=user&action=index" class="btn btn-outline" style="padding:10px 20px;">Réinitialiser</a>
       <?php endif; ?>
