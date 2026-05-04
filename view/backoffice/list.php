@@ -7,7 +7,7 @@
     <div>
       <h2 style="font-size:1.6rem; color:var(--text);">👥 Gestion des utilisateurs</h2>
       <p style="color:var(--text3); font-size:0.9rem; margin-top:4px;">
-        <?= count($users) ?> utilisateur(s) enregistré(s)
+        <?= $total ?> utilisateur(s) enregistré(s)
       </p>
     </div>
   </div>
@@ -21,6 +21,7 @@
       elseif ($_GET['success'] === 'suppression') echo '✅ Utilisateur supprimé avec succès.';
       elseif ($_GET['success'] === 'ban')         echo '✅ Statut de bannissement mis à jour.';
       elseif ($_GET['success'] === 'verify')      echo '✅ Statut de vérification mis à jour.';
+      elseif ($_GET['success'] === 'email')       echo '📧 Email envoyé avec succès.';
       ?>
     </span>
   </div>
@@ -140,6 +141,29 @@
       </table>
     </div>
   </div>
+
+  <!-- PAGINATION -->
+  <?php if ($totalPages > 1): ?>
+  <div style="display:flex; justify-content:center; gap:8px; margin-top:20px;">
+    <?php if ($currentPage > 1): ?>
+      <a href="index.php?ctrl=user&action=index&page=<?= $currentPage - 1 ?>&search=<?= urlencode($search ?? '') ?>&sort=<?= urlencode($sort ?? 'id') ?>" 
+         class="btn btn-outline" style="padding:6px 12px; text-decoration:none;">&laquo; Précédent</a>
+    <?php endif; ?>
+
+    <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+      <a href="index.php?ctrl=user&action=index&page=<?= $i ?>&search=<?= urlencode($search ?? '') ?>&sort=<?= urlencode($sort ?? 'id') ?>" 
+         class="btn <?= ($i === (int)$currentPage) ? 'btn-primary' : 'btn-outline' ?>" 
+         style="padding:6px 12px; min-width:36px; text-align:center; text-decoration:none;">
+        <?= $i ?>
+      </a>
+    <?php endfor; ?>
+
+    <?php if ($currentPage < $totalPages): ?>
+      <a href="index.php?ctrl=user&action=index&page=<?= $currentPage + 1 ?>&search=<?= urlencode($search ?? '') ?>&sort=<?= urlencode($sort ?? 'id') ?>" 
+         class="btn btn-outline" style="padding:6px 12px; text-decoration:none;">Suivant &raquo;</a>
+    <?php endif; ?>
+  </div>
+  <?php endif; ?>
 
 </div>
 

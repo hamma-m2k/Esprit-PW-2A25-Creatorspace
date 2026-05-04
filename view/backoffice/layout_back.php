@@ -17,9 +17,14 @@ require_once __DIR__ . '/../layout/header.php';
       <nav class="sidebar-nav">
         <div class="sidebar-section-label">Principal</div>
         <?php if (($currentUser['role'] ?? '') === 'admin'): ?>
-        <a href="index.php?ctrl=user&action=index">
+        <a href="index.php?ctrl=user&action=dashboard">
           <button class="sidebar-item <?= $page === 'dashboard' ? 'active' : '' ?>">
             <span class="sidebar-icon">📊</span><span>Dashboard</span>
+          </button>
+        </a>
+        <a href="index.php?ctrl=user&action=advancedTools">
+          <button class="sidebar-item <?= $page === 'tools' ? 'active' : '' ?>">
+            <span class="sidebar-icon">🛠️</span><span>Outils Avancés</span>
           </button>
         </a>
         <a href="index.php?ctrl=user&action=statistics">
