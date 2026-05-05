@@ -434,13 +434,39 @@ class EntityController
 
     private function send2FACode(string $email, string $code): void
     {
-        $subject = "Votre code de verification CreatorSpace";
-        $message = "Bonjour,\n\nVotre code de double authentification est : " . $code . "\n\nSi vous n'avez pas tente de vous connecter, ignorez cet email.";
-        $headers = "From: no-reply@creatorspace.com";
-        
-        @mail($email, $subject, $message, $headers);
-        // Backup log for local testing
-        file_put_contents(__DIR__ . '/../2fa_log.txt', date('Y-m-d H:i:s') . " - Code for $email: $code\n", FILE_APPEND);
+        require_once __DIR__ . '/../lib/phpmailer/Exception.php';
+        require_once __DIR__ . '/../lib/phpmailer/PHPMailer.php';
+        require_once __DIR__ . '/../lib/phpmailer/SMTP.php';
+
+        $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+
+        try {
+            // Configuration SMTP
+            $mail->isSMTP();
+            $mail->Host       = 'smtp.gmail.com';
+            $mail->SMTPAuth   = true;
+            $mail->Username   = 'marzouguim67@gmail.com';
+            $mail->Password   = 'rqriwlvnrzvlcbxz'; // <-- Mot de passe d'application Gmail inséré
+            $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port       = 587;
+
+            // Destinataire et Expéditeur
+            $mail->setFrom('marzouguim67@gmail.com', 'CreatorSpace Security');
+            $mail->addAddress($email);
+
+            // Contenu de l'email
+            $mail->isHTML(false);
+            $mail->Subject = "Votre code de verification CreatorSpace";
+            $mail->Body    = "Bonjour,\n\nVotre code de double authentification est : " . $code . "\n\nSi vous n'avez pas tente de vous connecter, ignorez cet email.";
+
+            $mail->send();
+            
+            // Log local en cas de succès
+            file_put_contents(__DIR__ . '/../2fa_log.txt', date('Y-m-d H:i:s') . " - Code for $email: $code (SMTP Success)\n", FILE_APPEND);
+        } catch (\PHPMailer\PHPMailer\Exception $e) {
+            // Log de l'erreur en cas d'échec
+            file_put_contents(__DIR__ . '/../2fa_log.txt', date('Y-m-d H:i:s') . " - Error sending to $email: {$mail->ErrorInfo}\n", FILE_APPEND);
+        }
     }
 
     public function verify2FA(): void

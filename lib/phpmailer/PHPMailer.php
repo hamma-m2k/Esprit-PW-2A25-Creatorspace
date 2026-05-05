@@ -1413,7 +1413,7 @@ class PHPMailer
             return ['name' => $name, 'email' => trim($matches[4])];
         }
 
-        return ['name' => '', 'email' $input];
+        return ['name' => '', 'email' => $input];
     }
 
     /**
@@ -1519,7 +1519,7 @@ class PHPMailer
             case 'pcre': //Kept for BC
             case 'pcre8':
                 /*
-                 * A more complex and more permissive version of the regex on which FILTER_VALIDATE_EMAIL
+                 * A more complex and more permissive version of the RFC5322 regex on which FILTER_VALIDATE_EMAIL
                  * is based.
                  * In addition to the addresses allowed by filter_var, also permits:
                  *  * dotless domains: `a@b`
@@ -1530,7 +1530,7 @@ class PHPMailer
                  *  * IPv6 literals: 'first.last@[IPv6:a1::]'
                  * Not all of these will necessarily work for sending!
                  *
-                 * @copyright Michael Rushton
+                 * @copyright 2009-2010 Michael Rushton
                  * Feel free to use and redistribute this code. But please keep this copyright notice.
                  */
                 return (bool) preg_match(
@@ -5302,7 +5302,7 @@ class PHPMailer
                 $headersToSignKeys[] = $header['label'];
                 $headersToSign[] = $header['label'] . ': ' . $header['value'];
                 if ($this->DKIM_copyHeaderFields) {
-                    $copiedHeaders[] = $header['label'] . ':' .
+                    $copiedHeaders[] = $header['label'] . ':' . 
                         str_replace('|', '=7C', $this->DKIM_QP($header['value']));
                 }
                 continue;
@@ -5315,7 +5315,7 @@ class PHPMailer
                         $headersToSignKeys[] = $header['label'];
                         $headersToSign[] = $header['label'] . ': ' . $header['value'];
                         if ($this->DKIM_copyHeaderFields) {
-                            $copiedHeaders[] = $header['label'] . ':' .
+                            $copiedHeaders[] = $header['label'] . ':' . 
                                 str_replace('|', '=7C', $this->DKIM_QP($header['value']));
                         }
                         //Skip straight to the next header
