@@ -22,11 +22,6 @@ require_once __DIR__ . '/../layout/header.php';
             <span class="sidebar-icon">📊</span><span>Dashboard</span>
           </button>
         </a>
-        <a href="index.php?ctrl=user&action=advancedTools">
-          <button class="sidebar-item <?= $page === 'tools' ? 'active' : '' ?>">
-            <span class="sidebar-icon">🛠️</span><span>Outils Avancés</span>
-          </button>
-        </a>
         <a href="index.php?ctrl=user&action=statistics">
           <button class="sidebar-item <?= $page === 'stats' ? 'active' : '' ?>">
             <span class="sidebar-icon">📈</span><span>Statistiques</span>

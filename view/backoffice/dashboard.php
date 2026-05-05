@@ -3,24 +3,12 @@
 <div class="back-section active" id="back-dashboard">
 
   <!-- PAGE HEADER -->
-    <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+    <div class="back-header">
       <div>
         <h2 style="font-size:1.6rem; color:var(--text);">📊 Dashboard</h2>
         <p style="color:var(--text3); font-size:0.9rem; margin-top:4px;">
           Bienvenue, <?= htmlspecialchars($nomAdmin ?? 'Admin') ?> 👋
         </p>
-      </div>
-      
-      <!-- Weather Widget -->
-      <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(108,63,197,0.3); border-radius:12px; padding:10px 20px; display:flex; align-items:center; gap:15px;">
-        <div style="text-align:right;">
-          <div style="font-weight:700; color:#a855f7; font-size:1.2rem;"><?= $weatherData['temp'] ?>°C</div>
-          <div style="font-size:0.8rem; color:#94a3b8;"><?= $weatherData['city'] ?></div>
-        </div>
-        <?php if ($weatherData['icon']): ?>
-          <img src="http://openweathermap.org/img/wn/<?= $weatherData['icon'] ?>.png" alt="weather" style="width:40px; height:40px;">
-        <?php endif; ?>
-        <div style="font-size:0.9rem; color:#ffffff; font-weight:500;"><?= $weatherData['desc'] ?></div>
       </div>
     </div>
 

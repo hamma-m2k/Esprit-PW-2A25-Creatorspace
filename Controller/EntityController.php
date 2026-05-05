@@ -6,8 +6,6 @@
 class EntityController
 {
     private PDO $pdo;
-    private string $weatherKey = 'c2175936bb86babce1d80926d1c2f9b';
-    private string $hfToken    = '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';
     private string $ocrKey     = 'K84086743488957';
 
     public function __construct(PDO $pdo)
@@ -525,75 +523,30 @@ class EntityController
             'demandes_attente' => $this->countDemandesEnAttente(),
         ];
 
-        // Advanced Métier 1: Weather API
-        $weatherData = $this->fetchWeather('Tunis');
-
         $lastUsers         = $this->getLastFiveUsers();
         $page              = 'dashboard';
         $currentUser       = $this->sessionUser();
         $nomAdmin          = $_SESSION['nom'] ?? 'Admin';
         $demandesEnAttente = $stats['demandes_attente'];
         $this->render('backoffice/dashboard', compact(
-            'stats', 'lastUsers', 'page', 'currentUser', 'nomAdmin', 'demandesEnAttente', 'weatherData'
+            'stats', 'lastUsers', 'page', 'currentUser', 'nomAdmin', 'demandesEnAttente'
         ));
     }
 
-    private function fetchWeather(string $city): array {
-        $url = "https://api.openweathermap.org/data/2.5/weather?q=" . urlencode($city) . "&appid=" . $this->weatherKey . "&units=metric&lang=fr";
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-        $response = curl_exec($ch);
-        curl_close($ch);
-        
-        $data = json_decode($response, true);
-        if (isset($data['main'])) {
-            return [
-                'temp' => round($data['main']['temp']),
-                'desc' => ucfirst($data['weather'][0]['description'] ?? 'Inconnu'),
-                'icon' => $data['weather'][0]['icon'] ?? '',
-                'city' => $data['name']
-            ];
-        }
-        return ['temp' => '--', 'desc' => 'Météo indisponible', 'icon' => '', 'city' => $city];
-    }
-
-    public function advancedTools(): void {
-        $this->checkAdmin();
-        $page = 'tools';
-        $currentUser = $this->sessionUser();
-        $demandesEnAttente = $this->countDemandesEnAttente();
-        $ocrResult = $_SESSION['ocr_result'] ?? null;
-        $aiResult = $_SESSION['ai_result'] ?? null;
-        unset($_SESSION['ocr_result'], $_SESSION['ai_result']);
-        
-        $this->render('backoffice/tools', compact('page', 'currentUser', 'demandesEnAttente', 'ocrResult', 'aiResult'));
-    }
-
-    public function ocrScan(): void {
-        $this->checkAdmin();
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['ocr_image'])) {
-            $file = $_FILES['ocr_image'];
-            $postData = [
-                'apikey' => $this->ocrKey,
-                'language' => 'fre',
-                'file' => new CURLFile($file['tmp_name'], $file['type'], $file['name'])
-            ];
-
-            $ch = curl_init('https://api.ocr.space/parse/image');
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
-            $response = curl_exec($ch);
-            curl_close($ch);
-
-            $data = json_decode($response, true);
-            $text = $data['ParsedResults'][0]['ParsedText'] ?? "Erreur lors de la lecture de l'image.";
-            $_SESSION['ocr_result'] = $text;
-        }
-        header('Location: index.php?ctrl=user&action=advancedTools');
-        exit;
+    private function normalizeText(string $text): string {
+        $text = mb_strtolower($text, 'UTF-8');
+        $utf8 = [
+            '/[áàâãªä]/u'   => 'a', '/[ÁÀÂÃÄ]/u'   => 'a',
+            '/[ÍÌÎÏ]/u'     => 'i', '/[íìîï]/u'     => 'i',
+            '/[éèêë]/u'     => 'e', '/[ÉÈÊË]/u'     => 'e',
+            '/[óòôõºö]/u'   => 'o', '/[ÓÒÔÕÖ]/u'   => 'o',
+            '/[úùûü]/u'     => 'u', '/[ÚÙÛÜ]/u'     => 'u',
+            '/ç/'           => 'c', '/Ç/'           => 'c',
+            '/ñ/'           => 'n', '/Ñ/'           => 'n',
+        ];
+        $text = preg_replace(array_keys($utf8), array_values($utf8), $text);
+        // On garde l'arabe (range \x{0600}-\x{06FF}), les lettres a-z et les chiffres
+        return preg_replace('/[^a-z0-9 \x{0600}-\x{06FF}]/u', ' ', $text);
     }
 
     public function verifyIdentity(): void {
@@ -606,7 +559,10 @@ class EntityController
             $file = $_FILES['id_card'];
             $postData = [
                 'apikey' => $this->ocrKey,
-                'language' => 'fre',
+                'language' => 'ara,fre',
+                'isOverlayRequired' => 'false',
+                'OCREngine' => '2', // Engine 2 est bien plus puissant pour l'arabe/français
+                'detectOrientation' => 'true',
                 'file' => new CURLFile($file['tmp_name'], $file['type'], $file['name'])
             ];
 
@@ -618,48 +574,27 @@ class EntityController
             curl_close($ch);
 
             $data = json_decode($response, true);
-            $extractedText = strtolower($data['ParsedResults'][0]['ParsedText'] ?? "");
+            $rawText = $data['ParsedResults'][0]['ParsedText'] ?? "";
+            $extractedText = $this->normalizeText($rawText);
             
-            $nom = strtolower($user->getNom());
-            $prenom = strtolower($user->getPrenom());
+            $nom = $this->normalizeText($user->getNom());
+            $prenom = $this->normalizeText($user->getPrenom());
 
-            if (strpos($extractedText, $nom) !== false && strpos($extractedText, $prenom) !== false) {
+            // On vérifie si le nom et le prénom apparaissent dans le texte extrait
+            if (!empty($nom) && !empty($prenom) && 
+                strpos($extractedText, trim($nom)) !== false && 
+                strpos($extractedText, trim($prenom)) !== false) {
                 // MATCH! Update DB
                 $stmt = $this->pdo->prepare("UPDATE `user` SET is_verified = 1 WHERE id = ?");
                 $stmt->execute([$userId]);
                 $_SESSION['verify_msg'] = "success";
             } else {
                 $_SESSION['verify_msg'] = "error";
+                // Debug: on peut garder le texte pour comprendre pourquoi ça échoue
+                $_SESSION['debug_ocr'] = $rawText; 
             }
         }
         header('Location: index.php?ctrl=user&action=profile');
-        exit;
-    }
-
-    public function aiAnalyze(): void {
-        $this->checkAdmin();
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['ai_text'])) {
-            $text = $_POST['ai_text'];
-            
-            // Advanced Métier: HuggingFace Text Classification / Sentiment Analysis
-            $ch = curl_init('https://api-inference.huggingface.co/models/facebook/bart-large-mnli');
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                "Authorization: Bearer " . $this->hfToken,
-                "Content-Type: application/json"
-            ]);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
-                "inputs" => $text,
-                "parameters" => ["candidate_labels" => ["politique", "sport", "technologie", "divertissement"]]
-            ]));
-            $response = curl_exec($ch);
-            curl_close($ch);
-
-            $data = json_decode($response, true);
-            $_SESSION['ai_result'] = $data;
-        }
-        header('Location: index.php?ctrl=user&action=advancedTools');
         exit;
     }
 
