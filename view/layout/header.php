@@ -68,3 +68,5 @@ $isBack  = in_array($page ?? '', ['dashboard', 'users', 'profiles', 'roles', 'se
 </div>
 <script>setTimeout(() => { const f = document.getElementById('flash-message'); if (f) f.remove(); }, 4000);</script>
 <?php endif; ?>
+
+<?php require_once __DIR__ . '/chatbot.php'; ?>

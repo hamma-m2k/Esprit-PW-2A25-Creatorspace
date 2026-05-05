@@ -1236,4 +1236,68 @@ class EntityController
         
         $this->render('backoffice/settings', compact('user', 'page', 'currentUser', 'demandesEnAttente', 'successMsg'));
     }
+
+    public function chatbot(): void
+    {
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['error' => 'Method not allowed']);
+            exit;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $userMessage = trim($input['message'] ?? '');
+
+        if ($userMessage === '') {
+            echo json_encode(['error' => 'Message cannot be empty']);
+            exit;
+        }
+
+        // Gemini API Configuration
+        $apiKey = 'AIzaSyButi28WQRajySejX0dzlMHZGD8r_aIZDQ'; // <-- Clé Gemini de l'utilisateur insérée
+        $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . $apiKey;
+
+        // System prompt context
+        $systemPrompt = "Tu es l'assistant IA officiel de CreatorSpace, une plateforme web qui met en relation des créateurs de contenu et des sociétés. 
+Tu dois répondre aux questions des utilisateurs de manière polie, concise (maximum 3 phrases) et toujours en français. 
+Si la question ne concerne pas CreatorSpace, la création de contenu ou la plateforme, dis poliment que tu ne peux répondre qu'aux questions liées à CreatorSpace.";
+
+        $data = [
+            'contents' => [
+                [
+                    'role' => 'user',
+                    'parts' => [
+                        ['text' => $systemPrompt . "\n\nQuestion de l'utilisateur : " . $userMessage]
+                    ]
+                ]
+            ]
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json'
+        ]);
+
+        // Désactiver la vérification SSL en local pour éviter les erreurs WAMP/XAMPP
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200 || !$response) {
+            echo json_encode(['reply' => "Désolé, je suis actuellement indisponible. (Assurez-vous que la clé API est configurée dans le code)"]);
+            exit;
+        }
+
+        $result = json_decode($response, true);
+        $botReply = $result['candidates'][0]['content']['parts'][0]['text'] ?? "Je n'ai pas pu générer de réponse.";
+
+        echo json_encode(['reply' => trim($botReply)]);
+        exit;
+    }
 }
