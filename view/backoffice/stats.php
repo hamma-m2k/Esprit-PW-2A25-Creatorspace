@@ -147,6 +147,67 @@
       </div>
     </div>
   </div>
+
+  <!-- AI INSIGHTS CARD -->
+  <div class="table-card" style="padding: 30px; margin-top: 20px; border: 1px solid rgba(108, 63, 197, 0.3); background: linear-gradient(145deg, rgba(17,17,17,1) 0%, rgba(20,15,30,1) 100%);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h3 style="font-family: 'Syne', sans-serif; font-size: 1.2rem; color: #a855f7; margin: 0; display: flex; align-items: center; gap: 10px;">
+        🤖 AI Insights (Analyse Prédictive)
+      </h3>
+      <button id="btnAiInsights" class="btn btn-primary" style="padding: 10px 20px; background: linear-gradient(135deg, #6C3FC5, #9D4EDD); border: none; font-size: 0.9rem; border-radius: 8px; font-weight: bold; cursor: pointer;">
+        🪄 Générer une Analyse
+      </button>
+    </div>
+    
+    <div id="aiInsightsResult" style="display: none; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 12px; color: var(--text2); font-size: 0.95rem; line-height: 1.6;">
+    </div>
+    
+    <div id="aiInsightsLoading" style="display: none; padding: 20px; text-align: center; color: var(--text3);">
+        <i>L'IA de CreatorSpace analyse les statistiques... ⏳</i>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const btnAi = document.getElementById('btnAiInsights');
+        const loadingDiv = document.getElementById('aiInsightsLoading');
+        const resultDiv = document.getElementById('aiInsightsResult');
+
+        if(btnAi) {
+            btnAi.addEventListener('click', async function() {
+                btnAi.disabled = true;
+                btnAi.style.opacity = '0.5';
+                resultDiv.style.display = 'none';
+                loadingDiv.style.display = 'block';
+
+                try {
+                    const response = await fetch('index.php?ctrl=user&action=generateAiInsights', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    loadingDiv.style.display = 'none';
+                    resultDiv.style.display = 'block';
+                    
+                    if (data.insights) {
+                        resultDiv.innerHTML = data.insights;
+                    } else if (data.error) {
+                        resultDiv.innerHTML = '<span style="color: red;">Erreur : ' + data.error + '</span>';
+                    }
+                } catch (error) {
+                    loadingDiv.style.display = 'none';
+                    resultDiv.style.display = 'block';
+                    resultDiv.innerHTML = '<span style="color: red;">Erreur de connexion à l\'API.</span>';
+                }
+
+                btnAi.disabled = false;
+                btnAi.style.opacity = '1';
+            });
+        }
+    });
+  </script>
 </div>
 
 <?php require_once __DIR__ . '/layout_back_end.php'; ?>

@@ -1300,4 +1300,68 @@ Si la question ne concerne pas CreatorSpace, la création de contenu ou la plate
         echo json_encode(['reply' => trim($botReply)]);
         exit;
     }
+
+    public function generateAiInsights(): void
+    {
+        $this->checkAdmin();
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['error' => 'Method not allowed']);
+            exit;
+        }
+
+        // Fetch stats
+        $inscriptionsStats = $this->getRegistrationsPerMonth();
+        $distributionStats = $this->getUserDistributionByType();
+
+        $statsText = "Inscriptions par mois (Jan-Déc): " . implode(', ', $inscriptionsStats) . "\n";
+        $statsText .= "Distribution des utilisateurs: ";
+        foreach($distributionStats as $type => $count) {
+            $statsText .= "$type: $count, ";
+        }
+
+        // Gemini API Configuration
+        $apiKey = 'AIzaSyButi28WQRajySejX0dzlMHZGD8r_aIZDQ';
+        $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . $apiKey;
+
+        $systemPrompt = "Tu es un Data Analyst expert pour CreatorSpace (plateforme de créateurs et sociétés). Voici les dernières statistiques de la plateforme.\n\n" . $statsText . "\n\nAgis comme un conseiller stratégique. Fournis une analyse courte, percutante (2 paragraphes maximum) et donne 2 recommandations concrètes à l'administrateur. Rédige ta réponse en HTML formaté (utilise <b>, <ul>, <li>, <br>) pour que le rendu soit beau dans une page web. Ne mets pas de balises markdown comme ```html.";
+
+        $data = [
+            'contents' => [
+                [
+                    'role' => 'user',
+                    'parts' => [
+                        ['text' => $systemPrompt]
+                    ]
+                ]
+            ]
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200 || !$response) {
+            echo json_encode(['error' => "Erreur de l'API IA (Code $httpCode)"]);
+            exit;
+        }
+
+        $result = json_decode($response, true);
+        $insights = $result['candidates'][0]['content']['parts'][0]['text'] ?? "Impossible de générer l'analyse.";
+
+        // Supprimer les balises markdown eventuelles
+        $insights = str_replace('```html', '', $insights);
+        $insights = str_replace('```', '', $insights);
+
+        echo json_encode(['insights' => trim($insights)]);
+        exit;
+    }
 }
