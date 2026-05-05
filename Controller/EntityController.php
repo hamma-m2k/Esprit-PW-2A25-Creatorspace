@@ -48,7 +48,9 @@ class EntityController
             (bool)($row['is_accepted'] ?? false),
             (bool)($row['is_verified'] ?? false),
             (bool)($row['is_banned']   ?? false),
-            $row['profile_picture']   ?? ''
+            $row['profile_picture']   ?? '',
+            (bool)($row['two_factor_enabled'] ?? false),
+            $row['two_factor_code']   ?? null
         );
     }
 
@@ -299,6 +301,23 @@ class EntityController
                 } elseif ($user->getIsBanned()) {
                     $error = "Ton compte a ete banner merci de votre attente.";
                 } else {
+                    if ($user->getTwoFactorEnabled()) {
+                        // Generate code
+                        $code = (string)rand(100000, 999999);
+                        $stmt = $this->pdo->prepare("UPDATE `user` SET two_factor_code = ? WHERE id = ?");
+                        $stmt->execute([$code, $user->getId()]);
+                        
+                        // Store temp user in session
+                        $_SESSION['temp_user_id'] = $user->getId();
+                        
+                        // Send Email
+                        $this->send2FACode($user->getMail(), $code);
+                        
+                        header('Location: index.php?ctrl=auth&action=verify2FA');
+                        exit;
+                    }
+
+                    // Standard login
                     $_SESSION['user_id'] = $user->getId();
                     $_SESSION['nom']     = $user->getNom();
                     $_SESSION['role']    = $user->getRole();
@@ -410,6 +429,71 @@ class EntityController
         session_unset();
         session_destroy();
         header('Location: index.php?ctrl=auth&action=login');
+        exit;
+    }
+
+    private function send2FACode(string $email, string $code): void
+    {
+        $subject = "Votre code de verification CreatorSpace";
+        $message = "Bonjour,\n\nVotre code de double authentification est : " . $code . "\n\nSi vous n'avez pas tente de vous connecter, ignorez cet email.";
+        $headers = "From: no-reply@creatorspace.com";
+        
+        @mail($email, $subject, $message, $headers);
+        // Backup log for local testing
+        file_put_contents(__DIR__ . '/../2fa_log.txt', date('Y-m-d H:i:s') . " - Code for $email: $code\n", FILE_APPEND);
+    }
+
+    public function verify2FA(): void
+    {
+        if (empty($_SESSION['temp_user_id'])) {
+            header('Location: index.php?ctrl=auth&action=login');
+            exit;
+        }
+
+        $error = '';
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $codeInput = trim($_POST['code'] ?? '');
+            $userId = $_SESSION['temp_user_id'];
+            $user = $this->getUserById($userId);
+
+            if ($user && $codeInput === $user->getTwoFactorCode()) {
+                $stmt = $this->pdo->prepare("UPDATE `user` SET two_factor_code = NULL WHERE id = ?");
+                $stmt->execute([$userId]);
+
+                $_SESSION['user_id'] = $user->getId();
+                $_SESSION['nom']     = $user->getNom();
+                $_SESSION['role']    = $user->getRole();
+                $_SESSION['mail']    = $user->getMail();
+                $_SESSION['profile_picture'] = $user->getProfilePicture();
+                unset($_SESSION['temp_user_id']);
+
+                if ($user->getRole() === 'admin') {
+                    header('Location: index.php?ctrl=user&action=dashboard');
+                } else {
+                    header('Location: index.php?ctrl=user&action=profile');
+                }
+                exit;
+            } else {
+                $error = "Code incorrect. Veuillez reessayer.";
+            }
+        }
+        $this->render('auth/verify2fa', compact('error'));
+    }
+
+    public function toggle2FA(): void
+    {
+        $this->checkLogged();
+        $userId = (int)$_SESSION['user_id'];
+        $user = $this->getUserById($userId);
+        
+        if ($user) {
+            $newVal = $user->getTwoFactorEnabled() ? 0 : 1;
+            $stmt = $this->pdo->prepare("UPDATE `user` SET two_factor_enabled = ? WHERE id = ?");
+            $stmt->execute([$newVal, $userId]);
+            
+            $_SESSION['success'] = $newVal ? "Double authentification activee." : "Double authentification desactivee.";
+        }
+        header('Location: index.php?ctrl=user&action=settings');
         exit;
     }
 
@@ -1115,5 +1199,17 @@ class EntityController
             return;
         }
         require_once $viewFile;
+    }
+    public function settings(): void
+    {
+        $this->checkLogged();
+        $user = $this->getUserById((int)$_SESSION['user_id']);
+        $page = 'settings';
+        $currentUser = $this->sessionUser();
+        $demandesEnAttente = $this->countDemandesEnAttente();
+        $successMsg = $_SESSION['success'] ?? '';
+        unset($_SESSION['success']);
+        
+        $this->render('backoffice/settings', compact('user', 'page', 'currentUser', 'demandesEnAttente', 'successMsg'));
     }
 }

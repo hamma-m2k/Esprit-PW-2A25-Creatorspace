@@ -54,16 +54,16 @@ require_once __DIR__ . '/../layout/header.php';
             <span class="sidebar-icon">🔍</span><span>Rechercher</span>
           </button>
         </a>
-        <?php if (($currentUser['role'] ?? '') === 'admin'): ?>
         <div class="sidebar-section-label">Configuration</div>
+        <a href="index.php?ctrl=user&action=settings">
+          <button class="sidebar-item <?= $page === 'settings' ? 'active' : '' ?>">
+            <span class="sidebar-icon">⚙️</span><span>Paramètres</span>
+          </button>
+        </a>
+        <?php if (($currentUser['role'] ?? '') === 'admin'): ?>
         <a href="index.php?page=roles">
           <button class="sidebar-item <?= $page === 'roles' ? 'active' : '' ?>">
             <span class="sidebar-icon">🔐</span><span>Rôles & Permissions</span>
-          </button>
-        </a>
-        <a href="index.php?page=settings">
-          <button class="sidebar-item <?= $page === 'settings' ? 'active' : '' ?>">
-            <span class="sidebar-icon">⚙️</span><span>Paramètres</span>
           </button>
         </a>
         <?php endif; ?>

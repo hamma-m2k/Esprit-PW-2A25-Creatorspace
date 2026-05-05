@@ -20,6 +20,8 @@ class User {
     private bool   $isVerified;
     private bool   $isBanned;
     private string $profilePicture;
+    private bool   $twoFactorEnabled;
+    private ?string $twoFactorCode;
 
     public function __construct(
         int    $id         = 0,
@@ -36,7 +38,9 @@ class User {
         bool   $isAccepted = false,
         bool   $isVerified = false,
         bool   $isBanned   = false,
-        string $profilePicture = ''
+        string $profilePicture = '',
+        bool   $twoFactorEnabled = false,
+        ?string $twoFactorCode = null
     ) {
         $this->id         = $id;
         $this->nom        = $nom;
@@ -53,6 +57,8 @@ class User {
         $this->isVerified = $isVerified;
         $this->isBanned   = $isBanned;
         $this->profilePicture = $profilePicture;
+        $this->twoFactorEnabled = $twoFactorEnabled;
+        $this->twoFactorCode = $twoFactorCode;
     }
 
     public function getId(): int          { return $this->id; }
@@ -70,6 +76,8 @@ class User {
     public function getIsVerified(): bool   { return $this->isVerified; }
     public function getIsBanned(): bool     { return $this->isBanned; }
     public function getProfilePicture(): string { return $this->profilePicture; }
+    public function getTwoFactorEnabled(): bool { return $this->twoFactorEnabled; }
+    public function getTwoFactorCode(): ?string { return $this->twoFactorCode; }
 
     public function setId(int $id): void             { $this->id = $id; }
     public function setNom(string $nom): void        { $this->nom = $nom; }
@@ -86,6 +94,8 @@ class User {
     public function setIsVerified(bool $b): void     { $this->isVerified = $b; }
     public function setIsBanned(bool $b): void       { $this->isBanned = $b; }
     public function setProfilePicture(string $p): void { $this->profilePicture = $p; }
+    public function setTwoFactorEnabled(bool $b): void { $this->twoFactorEnabled = $b; }
+    public function setTwoFactorCode(?string $c): void { $this->twoFactorCode = $c; }
 }
 
 /**

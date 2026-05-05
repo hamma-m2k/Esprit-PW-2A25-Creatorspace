@@ -21,7 +21,7 @@ $controller = new EntityController($pdo);
 switch ($ctrl) {
 
     case 'user':
-        $allowed = ['index', 'dashboard', 'delete', 'detail', 'profile', 'updateProfile', 'deleteOwn', 'searchUsers', 'publicProfile', 'statistics', 'toggleVerify', 'toggleBan', 'uploadAvatar', 'exportPdf', 'exportStats'];
+        $allowed = ['index', 'dashboard', 'delete', 'detail', 'profile', 'updateProfile', 'deleteOwn', 'searchUsers', 'publicProfile', 'statistics', 'toggleVerify', 'toggleBan', 'uploadAvatar', 'exportPdf', 'exportStats', 'toggle2FA', 'settings'];
         if (!in_array($action, $allowed, true)) {
             header('Location: index.php?ctrl=auth&action=login');
             exit;
@@ -40,7 +40,7 @@ switch ($ctrl) {
 
     case 'auth':
     default:
-        $allowed = ['login', 'register', 'logout', 'error'];
+        $allowed = ['login', 'register', 'logout', 'error', 'verify2FA'];
         if (!in_array($action, $allowed, true)) {
             $action = 'login';
         }
