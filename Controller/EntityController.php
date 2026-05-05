@@ -434,9 +434,9 @@ class EntityController
 
     private function send2FACode(string $email, string $code): void
     {
-        require_once __DIR__ . '/../lib/phpmailer/Exception.php';
-        require_once __DIR__ . '/../lib/phpmailer/PHPMailer.php';
-        require_once __DIR__ . '/../lib/phpmailer/SMTP.php';
+        require_once __DIR__ . '/../Model/lib/phpmailer/Exception.php';
+        require_once __DIR__ . '/../Model/lib/phpmailer/PHPMailer.php';
+        require_once __DIR__ . '/../Model/lib/phpmailer/SMTP.php';
 
         $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
 
@@ -461,11 +461,9 @@ class EntityController
 
             $mail->send();
             
-            // Log local en cas de succès
-            file_put_contents(__DIR__ . '/../2fa_log.txt', date('Y-m-d H:i:s') . " - Code for $email: $code (SMTP Success)\n", FILE_APPEND);
         } catch (\PHPMailer\PHPMailer\Exception $e) {
-            // Log de l'erreur en cas d'échec
-            file_put_contents(__DIR__ . '/../2fa_log.txt', date('Y-m-d H:i:s') . " - Error sending to $email: {$mail->ErrorInfo}\n", FILE_APPEND);
+            // Optionnel : gérer l'erreur de manière silencieuse ou via une autre méthode
+            // (le fichier de log a été retiré pour garder le projet propre)
         }
     }
 
