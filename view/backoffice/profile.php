@@ -263,42 +263,6 @@ $isCreateur = ($item->getTypeCompte() ?: '') === 'createur';
     </div>
     <!-- /form panel -->
 
-    <!-- ── VERIFICATION D'IDENTITÉ (Advanced Métier) ── -->
-    <?php if (!$item->getIsVerified()): ?>
-    <div style="background:rgba(255,255,255,0.04); border-radius:14px; border:1px solid rgba(108,63,197,0.3); padding:24px; margin-top:20px;">
-        <h3 style="color:#ffffff; font-size:1rem; margin-bottom:10px;">🛡️ Vérifier mon identité</h3>
-        <p style="color:#94a3b8; font-size:0.85rem; margin-bottom:15px;">
-            Uploadez une photo de votre carte d'identité pour obtenir le badge de vérification. 
-            L'IA vérifiera si votre nom et prénom correspondent à votre profil.
-        </p>
-        
-        <?php if (isset($_SESSION['verify_msg'])): ?>
-            <?php if ($_SESSION['verify_msg'] === 'success'): ?>
-                <div style="color:#68D391; background:rgba(56,161,105,0.1); padding:10px; border-radius:8px; border:1px solid #56a169; margin-bottom:15px;">
-                    ✅ Identité vérifiée avec succès !
-                </div>
-            <?php else: ?>
-                <div style="color:#ff6b6b; background:rgba(229,62,62,0.1); padding:10px; border-radius:8px; border:1px solid #ff6b6b; margin-bottom:15px;">
-                    ❌ Le nom et le prénom ne sont pas identiques sur la photo.
-                </div>
-            <?php endif; ?>
-            <?php unset($_SESSION['verify_msg']); ?>
-        <?php endif; ?>
-
-        <form action="index.php?ctrl=user&action=verifyIdentity" method="POST" enctype="multipart/form-data">
-            <div style="border:1px dashed rgba(108,63,197,0.4); border-radius:10px; padding:20px; text-align:center; cursor:pointer;" 
-                 onclick="document.getElementById('id_card_file').click()">
-                <input type="file" name="id_card" id="id_card_file" style="display:none;" accept="image/*" onchange="this.form.submit()">
-                <span style="color:#a855f7; font-size:0.9rem;">📷 Cliquer pour uploader votre carte d'identité</span>
-            </div>
-        </form>
-    </div>
-    <?php else: ?>
-        <div style="background:rgba(56,161,105,0.1); border-radius:14px; border:1px solid #56a169; padding:15px; margin-top:20px; text-align:center;">
-            <span style="color:#68D391; font-weight:600;">✅ Votre identité est officiellement vérifiée.</span>
-        </div>
-    <?php endif; ?>
-
   </div><!-- /ig-card -->
 </div><!-- /ig-wrap -->
 </div><!-- /back-section -->

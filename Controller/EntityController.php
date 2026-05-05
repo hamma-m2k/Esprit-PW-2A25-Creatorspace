@@ -6,7 +6,6 @@
 class EntityController
 {
     private PDO $pdo;
-    private string $ocrKey     = 'K84086743488957';
 
     public function __construct(PDO $pdo)
     {
@@ -531,71 +530,6 @@ class EntityController
         $this->render('backoffice/dashboard', compact(
             'stats', 'lastUsers', 'page', 'currentUser', 'nomAdmin', 'demandesEnAttente'
         ));
-    }
-
-    private function normalizeText(string $text): string {
-        $text = mb_strtolower($text, 'UTF-8');
-        $utf8 = [
-            '/[áàâãªä]/u'   => 'a', '/[ÁÀÂÃÄ]/u'   => 'a',
-            '/[ÍÌÎÏ]/u'     => 'i', '/[íìîï]/u'     => 'i',
-            '/[éèêë]/u'     => 'e', '/[ÉÈÊË]/u'     => 'e',
-            '/[óòôõºö]/u'   => 'o', '/[ÓÒÔÕÖ]/u'   => 'o',
-            '/[úùûü]/u'     => 'u', '/[ÚÙÛÜ]/u'     => 'u',
-            '/ç/'           => 'c', '/Ç/'           => 'c',
-            '/ñ/'           => 'n', '/Ñ/'           => 'n',
-        ];
-        $text = preg_replace(array_keys($utf8), array_values($utf8), $text);
-        // On garde l'arabe (range \x{0600}-\x{06FF}), les lettres a-z et les chiffres
-        return preg_replace('/[^a-z0-9 \x{0600}-\x{06FF}]/u', ' ', $text);
-    }
-
-    public function verifyIdentity(): void {
-        $this->checkLogged();
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['id_card'])) {
-            $userId = (int)$_SESSION['user_id'];
-            $user = $this->getUserById($userId);
-            if (!$user) exit;
-
-            $file = $_FILES['id_card'];
-            $postData = [
-                'apikey' => $this->ocrKey,
-                'language' => 'ara,fre',
-                'isOverlayRequired' => 'false',
-                'OCREngine' => '2', // Engine 2 est bien plus puissant pour l'arabe/français
-                'detectOrientation' => 'true',
-                'file' => new CURLFile($file['tmp_name'], $file['type'], $file['name'])
-            ];
-
-            $ch = curl_init('https://api.ocr.space/parse/image');
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
-            $response = curl_exec($ch);
-            curl_close($ch);
-
-            $data = json_decode($response, true);
-            $rawText = $data['ParsedResults'][0]['ParsedText'] ?? "";
-            $extractedText = $this->normalizeText($rawText);
-            
-            $nom = $this->normalizeText($user->getNom());
-            $prenom = $this->normalizeText($user->getPrenom());
-
-            // On vérifie si le nom et le prénom apparaissent dans le texte extrait
-            if (!empty($nom) && !empty($prenom) && 
-                strpos($extractedText, trim($nom)) !== false && 
-                strpos($extractedText, trim($prenom)) !== false) {
-                // MATCH! Update DB
-                $stmt = $this->pdo->prepare("UPDATE `user` SET is_verified = 1 WHERE id = ?");
-                $stmt->execute([$userId]);
-                $_SESSION['verify_msg'] = "success";
-            } else {
-                $_SESSION['verify_msg'] = "error";
-                // Debug: on peut garder le texte pour comprendre pourquoi ça échoue
-                $_SESSION['debug_ocr'] = $rawText; 
-            }
-        }
-        header('Location: index.php?ctrl=user&action=profile');
-        exit;
     }
 
     public function delete(): void
