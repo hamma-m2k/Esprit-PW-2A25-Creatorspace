@@ -137,9 +137,14 @@ $isCreateur = ($item->getTypeCompte() ?: '') === 'createur';
         <p class="ig-handle"><?= htmlspecialchars($handle) ?></p>
         <span class="ig-badge"><?= $typeLabel ?></span>
       </div>
-      <button class="btn-edit-profile" onclick="toggleEditForm()" id="btn-edit">
-        ✏️ Modifier le profil
-      </button>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <button class="btn-edit-profile" onclick="toggleEditForm()" id="btn-edit">
+          ✏️ Modifier le profil
+        </button>
+        <button class="btn btn-primary" onclick="openHealthModal()" style="padding:10px 22px; font-weight:600; background:linear-gradient(135deg, #00C2CB, #6C3FC5); border:none;">
+          🩺 Analyse Santé IA
+        </button>
+      </div>
     </div>
 
     <!-- ── STATS ── -->
@@ -282,15 +287,6 @@ $isCreateur = ($item->getTypeCompte() ?: '') === 'createur';
   <?php if (!empty($errors)): ?>
   toggleEditForm();
   <?php endif; ?>
-
-  // Show/hide social link field in the edit form
-  var sel  = document.getElementById('prof_type_compte');
-  var bloc = document.getElementById('prof_bloc_social');
-  if (sel && bloc) {
-    sel.addEventListener('change', function() {
-      bloc.style.display = (sel.value === 'createur') ? 'block' : 'none';
-    });
-  }
 })();
 </script>
 

@@ -10,17 +10,19 @@ require_once __DIR__ . '/layout_back.php';
         <div class="back-header">
           <div><h2>Utilisateurs</h2><p>Gérez tous les comptes de la plateforme</p></div>
           <button class="btn btn-primary btn-sm" onclick="openModal('add-user-modal')">+ Ajouter un utilisateur</button>
+
         </div>
 
         <div class="table-card">
           <div class="table-toolbar">
             <form method="GET" action="index.php" style="display:contents;">
-              <input type="hidden" name="page" value="users" />
+              <input type="hidden" name="ctrl" value="user" />
+              <input type="hidden" name="action" value="index" />
               <div class="search-wrap">
                 <span class="search-icon">🔍</span>
                 <input type="text" name="search"
                        placeholder="Rechercher par nom, email, rôle…"
-                       value="<?= htmlspecialchars($search) ?>" />
+                       value="<?= htmlspecialchars($search ?? '') ?>" />
               </div>
               <div class="toolbar-filters">
                 <select name="role" onchange="this.form.submit()">
@@ -52,30 +54,45 @@ require_once __DIR__ . '/layout_back.php';
                   <th>Statut</th><th>Inscrit le</th><th>Actions</th>
                 </tr>
               </thead>
+
               <tbody>
                 <?php foreach ($users as $u): ?>
                 <tr>
                   <td><input type="checkbox" style="width:auto;" /></td>
                   <td>
                     <div class="user-cell">
-                      <div class="user-mini-avatar" style="background:<?= htmlspecialchars($u['color'] ?? '#6C3FC5') ?>">
-                        <?= htmlspecialchars($u['initials'] ?? strtoupper(substr($u['nom'],0,1).substr($u['prenom'],0,1))) ?>
+                      <div class="user-mini-avatar" style="background:#6C3FC5">
+                        <?= htmlspecialchars(strtoupper(substr($u->getNom(),0,1).substr($u->getPrenom(),0,1))) ?>
                       </div>
-                      <span class="user-name"><?= htmlspecialchars($u['nom'].' '.$u['prenom']) ?></span>
+                      <span class="user-name" style="<?= $u->getIsBanned() ? 'text-decoration:line-through; color:red;' : '' ?>">
+                        <?= htmlspecialchars($u->getNom().' '.$u->getPrenom()) ?>
+                      </span>
+                      <?php if ($u->getIsVerified()): ?>
+                        <span title="Vérifié" style="margin-left:5px;">✅</span>
+                      <?php endif; ?>
                     </div>
                   </td>
-                  <td><?= htmlspecialchars($u['mail']) ?></td>
-                  <td><span class="role-badge"><?= htmlspecialchars($u['role']) ?></span></td>
+                  <td><?= htmlspecialchars($u->getMail()) ?></td>
+                  <td><span class="role-badge"><?= htmlspecialchars($u->getRole()) ?></span></td>
                   <td>
-                    <span class="status-badge status-active">● Actif</span>
+                    <?php if ($u->getIsBanned()): ?>
+                      <span class="status-badge" style="background:rgba(231,76,60,0.1); color:#e74c3c;">● Banni</span>
+                    <?php else: ?>
+                      <span class="status-badge status-active">● Actif</span>
+                    <?php endif; ?>
                   </td>
-                  <td><?= $u['id'] ?></td>
+                  <td><?= $u->getId() ?></td>
                   <td>
                     <div class="table-actions">
-                      <a href="index.php?ctrl=user&action=edit&id=<?= (int)$u['id'] ?>">
+                      <a href="index.php?ctrl=user&action=edit&id=<?= (int)$u->getId() ?>">
                         <button class="action-btn" title="Modifier">✏️</button>
                       </a>
-                      <a href="index.php?ctrl=user&action=delete&id=<?= (int)$u['id'] ?>"
+                      <a href="index.php?ctrl=user&action=toggleBan&id=<?= (int)$u->getId() ?>">
+                        <button class="action-btn" title="<?= $u->getIsBanned() ? 'Débannir' : 'Bannir' ?>">
+                          <?= $u->getIsBanned() ? '🔓' : '🔨' ?>
+                        </button>
+                      </a>
+                      <a href="index.php?ctrl=user&action=delete&id=<?= (int)$u->getId() ?>"
                          onclick="return window.confirm('Confirmer la suppression ?')">
                         <button class="action-btn del" title="Supprimer">🗑</button>
                       </a>
@@ -91,8 +108,8 @@ require_once __DIR__ . '/layout_back.php';
             <span><?= $total ?> utilisateur<?= $total > 1 ? 's' : '' ?></span>
             <div class="pagination">
               <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-              <a href="index.php?page=users&p=<?= $i ?>&search=<?= urlencode($search) ?>&role=<?= urlencode($roleFilter) ?>&status=<?= urlencode($statusFilter) ?>">
-                <button class="page-btn <?= $i === $currentPage ? 'active' : '' ?>"><?= $i ?></button>
+              <a href="index.php?ctrl=user&action=index&page=<?= $i ?>&search=<?= urlencode($search ?? '') ?>&role=<?= urlencode($roleFilter ?? '') ?>&status=<?= urlencode($statusFilter ?? '') ?>">
+                <button class="page-btn <?= $i === (int)$currentPage ? 'active' : '' ?>"><?= $i ?></button>
               </a>
               <?php endfor; ?>
             </div>
@@ -148,5 +165,7 @@ require_once __DIR__ . '/layout_back.php';
     <button class="btn btn-danger btn-sm" id="confirm-delete-btn">🗑️ Supprimer</button>
   </div>
 </div>
+
+
 
 <?php require_once __DIR__ . '/layout_back_end.php'; ?>

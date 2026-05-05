@@ -609,7 +609,7 @@ class EntityController
         $demandesEnAttente  = $this->countDemandesEnAttente();
         $currentUserId      = (int)($_SESSION['user_id'] ?? 0);
 
-        $this->render('backoffice/list', compact(
+        $this->render('backoffice/users', compact(
             'users', 'total', 'totalPages', 'currentPage',
             'search', 'sort', 'roleFilter', 'statusFilter', 'page', 'currentUser',
             'demandesEnAttente', 'currentUserId'
@@ -1362,6 +1362,106 @@ Si la question ne concerne pas CreatorSpace, la création de contenu ou la plate
         $insights = str_replace('```', '', $insights);
 
         echo json_encode(['insights' => trim($insights)]);
+        exit;
+    }
+
+
+    public function healthAi(): void
+    {
+        $this->checkLogged();
+        header('Content-Type: application/json');
+
+        // Capture data from POST (more secure for clinical data)
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (!$input) {
+            $input = $_GET; // Fallback to GET for simple testing if needed
+        }
+
+        $age = (int)($input['age'] ?? 50);
+        $trestbps = (int)($input['trestbps'] ?? 120); // Pression systolique
+        $chol = (int)($input['chol'] ?? 200);
+        $thalach = (int)($input['thalach'] ?? 150); // Fréquence cardiaque max
+        $oldpeak = (float)($input['oldpeak'] ?? 0.0); // Dépression ST
+        $ca = (int)($input['ca'] ?? 0); // Nb vaisseaux
+        $sex = ($input['sex'] ?? 'male') === 'male' ? 1 : 0;
+        $exang = (int)($input['exang'] ?? 0); // Angine induite
+        $fbs = (int)($input['fbs'] ?? 0); // Glycémie > 120
+        $restecg = (int)($input['restecg'] ?? 0);
+        $thal = (int)($input['thal'] ?? 0);
+        $smoker = (int)($input['smoker'] ?? 0);
+
+        // Gemini API Configuration
+        $apiKey = 'AIzaSyButi28WQRajySejX0dzlMHZGD8r_aIZDQ';
+        $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . $apiKey;
+
+        $systemPrompt = "Tu es un modèle d'IA spécialisé dans l'analyse de risque cardiaque basé sur le dataset Cleveland Heart Disease.
+Analyses les données suivantes d'un patient :
+- Âge: $age ans
+- Sexe: " . ($sex ? 'Masculin' : 'Féminin') . "
+- Pression systolique: $trestbps mmHg
+- Cholestérol: $chol mg/dL
+- Fréquence cardiaque max: $thalach bpm
+- Dépression ST (Oldpeak): $oldpeak mm
+- Nombre de vaisseaux colorés (CA): $ca
+- Angine induite par l'effort: " . ($exang ? 'Oui' : 'Non') . "
+- Glycémie à jeun > 120 mg/dL: " . ($fbs ? 'Oui' : 'Non') . "
+- ECG au repos: $restecg
+- Thalassemia: $thal
+- Fumeur actif: " . ($smoker ? 'Oui' : 'Non') . "
+
+Génère une réponse JSON STRICTE (pas de markdown) avec cette structure :
+{
+  \"diagnostic\": \"Faible risque | Risque Modéré | Risque Élevé\",
+  \"score\": int (0-100),
+  \"probabilities\": {
+    \"absence\": int (%),
+    \"stade1\": int (%),
+    \"stade2\": int (%),
+    \"stade3\": int (%)
+  },
+  \"importance\": [
+    {\"feature\": \"Thalassémie\", \"value\": int (%)},
+    {\"feature\": \"Nb. vaisseaux\", \"value\": int (%)},
+    {\"feature\": \"Dépression ST\", \"value\": int (%)},
+    {\"feature\": \"Fréq. cardiaque\", \"value\": int (%)},
+    {\"feature\": \"Âge\", \"value\": int (%)},
+    {\"feature\": \"Cholestérol\", \"value\": int (%)}
+  ],
+  \"conseils\": [\"Conseil 1\", \"Conseil 2\", \"Conseil 3\"]
+}";
+
+        $data = [
+            'contents' => [
+                [
+                    'role' => 'user',
+                    'parts' => [['text' => $systemPrompt]]
+                ]
+            ]
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200 || !$response) {
+            echo json_encode(['error' => "Erreur de connexion à l'IA"]);
+            exit;
+        }
+
+        $result = json_decode($response, true);
+        $rawText = $result['candidates'][0]['content']['parts'][0]['text'] ?? "{}";
+        
+        // Clean markdown if present
+        $rawText = str_replace(['```json', '```'], '', $rawText);
+        
+        echo trim($rawText);
         exit;
     }
 }
