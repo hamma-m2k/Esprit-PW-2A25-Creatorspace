@@ -78,9 +78,9 @@ class EntityController
         }
 
         switch ($sort) {
-            case 'alphabet': $query .= " ORDER BY nom ASC, prenom ASC"; break;
-            case 'date':     $query .= " ORDER BY created_at DESC"; break;
-            default:        $query .= " ORDER BY id ASC"; break;
+            case 'nom': $query .= " ORDER BY nom ASC, prenom ASC"; break;
+            case 'id':
+            default:   $query .= " ORDER BY id ASC"; break;
         }
 
         $offset = ($page - 1) * $perPage;
@@ -434,9 +434,9 @@ class EntityController
 
     private function send2FACode(string $email, string $code): void
     {
-        require_once __DIR__ . '/../Model/lib/phpmailer/Exception.php';
-        require_once __DIR__ . '/../Model/lib/phpmailer/PHPMailer.php';
-        require_once __DIR__ . '/../Model/lib/phpmailer/SMTP.php';
+        require_once __DIR__ . '/../View/lib/phpmailer/Exception.php';
+        require_once __DIR__ . '/../View/lib/phpmailer/PHPMailer.php';
+        require_once __DIR__ . '/../View/lib/phpmailer/SMTP.php';
 
         $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
 
@@ -1237,6 +1237,68 @@ class EntityController
         $this->render('backoffice/settings', compact('user', 'page', 'currentUser', 'demandesEnAttente', 'successMsg'));
     }
 
+    /**
+     * Appelle generateContent en essayant plusieurs modèles (quotas / disponibilité différents selon le plan).
+     *
+     * @param array<string,mixed> $payload Corps JSON Gemini (contents, etc.)
+     * @return array{ok:true, decoded: array<string,mixed>}|array{ok:false, message: string}
+     */
+    private function geminiGenerateContent(string $apiKey, array $payload): array
+    {
+        $models = [
+            'gemini-2.5-flash-lite',
+            'gemini-2.5-flash',
+            'gemini-2.0-flash',
+            'gemini-1.5-flash',
+        ];
+        $lastMsg = '';
+
+        foreach ($models as $model) {
+            $url = 'https://generativelanguage.googleapis.com/v1beta/models/'
+                . rawurlencode($model)
+                . ':generateContent?key=' . rawurlencode($apiKey);
+
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+            $response = curl_exec($ch);
+            $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 200 && $response !== false && $response !== '') {
+                $decoded = json_decode($response, true);
+                if (
+                    is_array($decoded)
+                    && isset($decoded['candidates'][0]['content']['parts'][0]['text'])
+                ) {
+                    return ['ok' => true, 'decoded' => $decoded];
+                }
+            }
+
+            $errData = json_decode((string)$response, true);
+            $lastMsg = is_array($errData) && isset($errData['error']['message'])
+                ? (string)$errData['error']['message']
+                : ('HTTP ' . $httpCode);
+        }
+
+        return ['ok' => false, 'message' => $lastMsg];
+    }
+
+    private function geminiQuotaMessageFr(string $technicalMessage): string
+    {
+        if (preg_match('/quota|rate.?limit|429|exceeded|limit:\s*0/i', $technicalMessage)) {
+            return 'Quota Google AI atteint ou aucun crédit gratuit pour ces modèles. '
+                . 'Ouvrez Google AI Studio pour vérifier votre clé, les quotas et la facturation '
+                . '(https://ai.google.dev/gemini-api/docs/rate-limits), puis réessayez dans une minute.';
+        }
+
+        return "Erreur API Gemini : $technicalMessage";
+    }
+
     public function chatbot(): void
     {
         header('Content-Type: application/json');
@@ -1254,9 +1316,7 @@ class EntityController
             exit;
         }
 
-        // Gemini API Configuration
-        $apiKey = 'AIzaSyButi28WQRajySejX0dzlMHZGD8r_aIZDQ'; // <-- Clé Gemini de l'utilisateur insérée
-        $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . $apiKey;
+        $apiKey = 'AIzaSyBdi-n5tU1slMszRjVO9ECsTI7cYz_TiW8'; // <-- Clé Gemini de l'utilisateur insérée
 
         // System prompt context
         $systemPrompt = "Tu es l'assistant IA officiel de CreatorSpace, une plateforme web qui met en relation des créateurs de contenu et des sociétés. 
@@ -1274,27 +1334,15 @@ Si la question ne concerne pas CreatorSpace, la création de contenu ou la plate
             ]
         ];
 
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json'
-        ]);
-
-        // Désactiver la vérification SSL en local pour éviter les erreurs WAMP/XAMPP
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode !== 200 || !$response) {
-            echo json_encode(['reply' => "Désolé, je suis actuellement indisponible. (Assurez-vous que la clé API est configurée dans le code)"]);
+        $gen = $this->geminiGenerateContent($apiKey, $data);
+        if (!$gen['ok']) {
+            echo json_encode([
+                'reply' => $this->geminiQuotaMessageFr($gen['message'] ?? 'Erreur inconnue'),
+            ]);
             exit;
         }
 
-        $result = json_decode($response, true);
+        $result = $gen['decoded'];
         $botReply = $result['candidates'][0]['content']['parts'][0]['text'] ?? "Je n'ai pas pu générer de réponse.";
 
         echo json_encode(['reply' => trim($botReply)]);
@@ -1321,9 +1369,7 @@ Si la question ne concerne pas CreatorSpace, la création de contenu ou la plate
             $statsText .= "$type: $count, ";
         }
 
-        // Gemini API Configuration
-        $apiKey = 'AIzaSyButi28WQRajySejX0dzlMHZGD8r_aIZDQ';
-        $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . $apiKey;
+        $apiKey = 'AIzaSyBdi-n5tU1slMszRjVO9ECsTI7cYz_TiW8';
 
         $systemPrompt = "Tu es un Data Analyst expert pour CreatorSpace (plateforme de créateurs et sociétés). Voici les dernières statistiques de la plateforme.\n\n" . $statsText . "\n\nAgis comme un conseiller stratégique. Fournis une analyse courte, percutante (2 paragraphes maximum) et donne 2 recommandations concrètes à l'administrateur. Rédige ta réponse en HTML formaté (utilise <b>, <ul>, <li>, <br>) pour que le rendu soit beau dans une page web. Ne mets pas de balises markdown comme ```html.";
 
@@ -1338,23 +1384,13 @@ Si la question ne concerne pas CreatorSpace, la création de contenu ou la plate
             ]
         ];
 
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode !== 200 || !$response) {
-            echo json_encode(['error' => "Erreur de l'API IA (Code $httpCode)"]);
+        $gen = $this->geminiGenerateContent($apiKey, $data);
+        if (!$gen['ok']) {
+            echo json_encode(['error' => $this->geminiQuotaMessageFr($gen['message'] ?? 'Erreur inconnue')]);
             exit;
         }
 
-        $result = json_decode($response, true);
+        $result = $gen['decoded'];
         $insights = $result['candidates'][0]['content']['parts'][0]['text'] ?? "Impossible de générer l'analyse.";
 
         // Supprimer les balises markdown eventuelles
@@ -1390,9 +1426,7 @@ Si la question ne concerne pas CreatorSpace, la création de contenu ou la plate
         $thal = (int)($input['thal'] ?? 0);
         $smoker = (int)($input['smoker'] ?? 0);
 
-        // Gemini API Configuration
-        $apiKey = 'AIzaSyButi28WQRajySejX0dzlMHZGD8r_aIZDQ';
-        $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . $apiKey;
+        $apiKey = 'AIzaSyBdi-n5tU1slMszRjVO9ECsTI7cYz_TiW8';
 
         $systemPrompt = "Tu es un modèle d'IA spécialisé dans l'analyse de risque cardiaque basé sur le dataset Cleveland Heart Disease.
 Analyses les données suivantes d'un patient :
@@ -1439,23 +1473,13 @@ Génère une réponse JSON STRICTE (pas de markdown) avec cette structure :
             ]
         ];
 
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode !== 200 || !$response) {
-            echo json_encode(['error' => "Erreur de connexion à l'IA"]);
+        $gen = $this->geminiGenerateContent($apiKey, $data);
+        if (!$gen['ok']) {
+            echo json_encode(['error' => $this->geminiQuotaMessageFr($gen['message'] ?? 'Erreur inconnue')]);
             exit;
         }
 
-        $result = json_decode($response, true);
+        $result = $gen['decoded'];
         $rawText = $result['candidates'][0]['content']['parts'][0]['text'] ?? "{}";
         
         // Clean markdown if present

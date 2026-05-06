@@ -141,9 +141,7 @@ $isCreateur = ($item->getTypeCompte() ?: '') === 'createur';
         <button class="btn-edit-profile" onclick="toggleEditForm()" id="btn-edit">
           ✏️ Modifier le profil
         </button>
-        <button class="btn btn-primary" onclick="openHealthModal()" style="padding:10px 22px; font-weight:600; background:linear-gradient(135deg, #00C2CB, #6C3FC5); border:none;">
-          🩺 Analyse Santé IA
-        </button>
+
       </div>
     </div>
 

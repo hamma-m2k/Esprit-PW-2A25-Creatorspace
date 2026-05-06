@@ -81,11 +81,9 @@ class HealthModel
             48 => 'https://cdn-icons-png.flaticon.com/512/869/869872.png',
             51 => 'https://cdn-icons-png.flaticon.com/512/869/869873.png',
             61 => 'https://cdn-icons-png.flaticon.com/512/869/869873.png',
-            71 => 'https://cdn-icons-png.flaticon.com/512/869/869874.png',
             80 => 'https://cdn-icons-png.flaticon.com/512/869/869874.png',
             95 => 'https://cdn-icons-png.flaticon.com/512/869/869875.png',
         ];
         return $icons[$code] ?? '';
     }
 }
-?>

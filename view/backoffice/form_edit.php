@@ -18,7 +18,7 @@
                 border-radius:16px; padding:2rem;
                 box-shadow:0 8px 32px rgba(108,63,197,0.15);">
 
-      <form method="POST" action="index.php?ctrl=user&action=update&id=<?= $item->getId() ?>">
+      <form method="POST" action="index.php?ctrl=user&action=edit&id=<?= $item->getId() ?>">
 
         <div style="margin-bottom:20px;">
           <label style="display:block; color:var(--text2); font-size:0.85rem; margin-bottom:8px;">Nom</label>
@@ -67,6 +67,33 @@
           <?php endif; ?>
         </div>
 
+        <div style="margin-bottom:20px;">
+          <label style="display:block; color:var(--text2); font-size:0.85rem; margin-bottom:8px;">Type de compte</label>
+          <select name="type_compte" id="type_compte_select"
+                  style="width:100%; background:rgba(255,255,255,0.08);
+                         border:1px solid rgba(108,63,197,0.5); color:var(--text);
+                         border-radius:8px; padding:12px 14px; font-size:0.95rem; outline:none;">
+            <option value="user"     <?= ($item->getTypeCompte() ?: '') === 'user'     ? 'selected' : '' ?>>Utilisateur</option>
+            <option value="societe"  <?= ($item->getTypeCompte() ?: '') === 'societe'  ? 'selected' : '' ?>>Société</option>
+            <option value="createur" <?= ($item->getTypeCompte() ?: '') === 'createur' ? 'selected' : '' ?>>Créateur</option>
+          </select>
+          <?php if (!empty($errors['type_compte'])): ?>
+            <span style="color:#ff6b6b; font-size:0.8rem; margin-top:4px; display:block;">
+              <?= htmlspecialchars($errors['type_compte']) ?>
+            </span>
+          <?php endif; ?>
+        </div>
+
+        <div id="social_media_group" style="margin-bottom:20px; display: <?= ($item->getTypeCompte() === 'createur') ? 'block' : 'none' ?>;">
+          <label style="display:block; color:var(--text2); font-size:0.85rem; margin-bottom:8px;">Lien Réseau Social (Instagram, TikTok...)</label>
+          <input type="text" name="social_media_link"
+                 placeholder="https://instagram.com/..."
+                 value="<?= htmlspecialchars($item->getSocialMediaLink() ?: '') ?>"
+                 style="width:100%; background:rgba(255,255,255,0.08);
+                        border:1px solid rgba(108,63,197,0.5); color:var(--text);
+                        border-radius:8px; padding:12px 14px; font-size:0.95rem; outline:none;">
+        </div>
+
         <div style="margin-bottom:28px;">
           <label style="display:block; color:var(--text2); font-size:0.85rem; margin-bottom:8px;">Rôle</label>
           <select name="role"
@@ -77,6 +104,17 @@
             <option value="admin" <?= ($item->getRole() ?: '') === 'admin' ? 'selected' : '' ?>>Administrateur</option>
           </select>
         </div>
+
+        <script>
+          document.getElementById('type_compte_select').addEventListener('change', function() {
+            const socialGroup = document.getElementById('social_media_group');
+            if (this.value === 'createur') {
+              socialGroup.style.display = 'block';
+            } else {
+              socialGroup.style.display = 'none';
+            }
+          });
+        </script>
 
         <button type="submit" class="btn btn-primary" style="width:100%; padding:13px; font-size:1rem;">
           💾 Enregistrer les modifications
