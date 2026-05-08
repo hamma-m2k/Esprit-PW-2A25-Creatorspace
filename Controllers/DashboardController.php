@@ -47,6 +47,28 @@ class DashboardController extends Controller {
         $recent_requests = $requests->getAll();
         $recent_requests = array_slice($recent_requests, 0, 5);
 
+        $contratModel = new ContratModel();
+        $contrats = $contratModel->getAll();
+
+        // Contrats par mois (12 derniers mois)
+                $contratParMois = $contratModel->getContratsParMoisLastYear();
+
+        // Répartition par type
+                $repartitionType = $contratModel->getRepartitionType();
+
+        // Répartition par statut
+                $repartitionStatut = $contratModel->getRepartitionStatut();
+
+        // Rules par contrat (top 5)
+                $topContrats = $contratModel->getTopContratsByRules(5);
+
+        // Taux de complétion
+        $totalContrats = count($contrats);
+                $contratsAvecRules = $contratModel->countContratsAvecRules();
+        $tauxCompletion = $totalContrats > 0 
+            ? round(($contratsAvecRules / $totalContrats) * 100) 
+            : 0;
+
         // Météo (API externe Open-Meteo) — non bloquant
         $weather = null;
         try {
@@ -56,6 +78,19 @@ class DashboardController extends Controller {
             $weather = $ref->invoke($w, WEATHER_CITY);
         } catch (\Throwable $e) { /* ignore */ }
 
-        $this->render('dashboard/index', compact('stats', 'recent_logs', 'recent_requests', 'weather'));
+        $this->render('dashboard/index', compact(
+            'stats',
+            'recent_logs',
+            'recent_requests',
+            'weather',
+            'contratParMois',
+            'repartitionType',
+            'repartitionStatut',
+            'topContrats',
+            'totalContrats',
+            'contratsAvecRules',
+            'tauxCompletion'
+        ));
     }
 }
+

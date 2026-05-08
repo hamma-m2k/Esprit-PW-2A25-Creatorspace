@@ -4,7 +4,7 @@
  *   /
  *   ├── index.php       (ce fichier : config + bootstrap + routes)
  *   ├── Models/         (entités + repositories)
- *   ├── Views/          (frontoffice/ + assets/)
+ *   ├── Views/          (frontoffice/ + backoffice/ + assets/)
  *   └── Controllers/    (logique + helpers + APIs externes)
  */
 
@@ -34,10 +34,10 @@ if (!defined('BASE_URL')) {
 // ───────── SMTP ─────────
 define('SMTP_HOST',      'smtp.gmail.com');
 define('SMTP_PORT',      587);
-define('SMTP_USER',      'fouedgafsi40@gmail.com');
-define('SMTP_PASS',      'ijhu vjoo vpab ivpc');
+define('SMTP_USER',      'bacemgafsi99@gmail.com');
+define('SMTP_PASS',      'hvko jmqf apyp wuwe');
 define('SMTP_SECURE',    'tls');
-define('SMTP_FROM',      'fouedgafsi40@gmail.com');
+define('SMTP_FROM',      'bacemgafsi99@gmail.com');
 define('SMTP_FROM_NAME', 'CreatorSpace');
 
 // ───────── LibreTranslate ─────────
@@ -52,7 +52,7 @@ define('OPENAI_MODEL', getenv('OPENAI_MODEL') ?: 'gpt-4o-mini');
 define('ANTHROPIC_API_KEY', getenv('ANTHROPIC_API_KEY') ?: '');
 define('ANTHROPIC_MODEL', getenv('ANTHROPIC_MODEL') ?: 'claude-3-5-sonnet-20241022');
 // Google Gemini — https://aistudio.google.com/apikey
-define('GEMINI_API_KEY', getenv('GEMINI_API_KEY') ?: 'AIzaSyDb3d2-Sbayho_AhuEc4hmUwzcqMRK9ZFE');
+define('GEMINI_API_KEY', getenv('GEMINI_API_KEY') ?: 'AIzaSyBvhNzjzdwTvmBLapriPAlW7AU-jtHWyyg');
 define('GEMINI_MODEL', getenv('GEMINI_MODEL') ?: 'gemini-flash-latest');
 // Fournisseur prioritaire : openai | anthropic | gemini (sinon secours sur les autres clés définies)
 define('AI_PROVIDER', getenv('AI_PROVIDER') ?: 'openai');
@@ -88,7 +88,8 @@ session_start();
 $router = new Router();
 
 // Auth
-$router->add('GET',  '/',          'AuthController@loginPage');
+$router->add('GET',  '/',          'AuthController@welcomePage');
+$router->add('GET',  '/login',     'AuthController@loginPage');
 $router->add('POST', '/login',     'AuthController@login');
 $router->add('GET',  '/logout',    'AuthController@logout');
 $router->add('GET',  '/register',  'AuthController@registerPage');

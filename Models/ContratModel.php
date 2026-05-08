@@ -165,6 +165,53 @@ class ContratModel extends Model {
         )['c'];
     }
 
+    public function getContratsParMoisLastYear(): array {
+        return $this->fetchAll(<<<'SQL'
+SELECT
+    DATE_FORMAT(created_at, '%Y-%m') AS mois,
+    COUNT(*) AS total,
+    SUM(CASE WHEN type='CDI'  THEN 1 ELSE 0 END) AS cdi,
+    SUM(CASE WHEN type='CDD'  THEN 1 ELSE 0 END) AS cdd,
+    SUM(CASE WHEN type='CDIV' THEN 1 ELSE 0 END) AS cdiv
+FROM contrats
+WHERE created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+ORDER BY mois ASC
+SQL
+        );
+    }
+
+    public function getRepartitionType(): array {
+        return $this->fetchAll(
+            "SELECT type, COUNT(*) as total FROM contrats GROUP BY type"
+        );
+    }
+
+    public function getRepartitionStatut(): array {
+        return $this->fetchAll(
+            "SELECT statut, COUNT(*) as total FROM contrats GROUP BY statut"
+        );
+    }
+
+    public function getTopContratsByRules(int $limit = 5): array {
+        return $this->fetchAll(<<<'SQL'
+SELECT c.titre, COUNT(r.id) as nb_rules
+FROM contrats c
+LEFT JOIN rules r ON r.contrat_id = c.id
+GROUP BY c.id, c.titre
+ORDER BY nb_rules DESC
+LIMIT ?
+SQL
+            , [$limit]
+        );
+    }
+
+    public function countContratsAvecRules(): int {
+        return (int) ($this->fetch(
+            "SELECT COUNT(DISTINCT contrat_id) as total FROM rules"
+        )['total'] ?? 0);
+    }
+
     /* ───── Validation PHP (pas HTML5) ───── */
 
     public function validate(array $d): array {

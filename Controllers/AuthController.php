@@ -16,6 +16,13 @@ class AuthController extends Controller {
         $this->history      = new HistoryModel();
     }
 
+    public function welcomePage(): void {
+        if (isset($_SESSION['user_id'])) {
+            $this->redirect('/dashboard');
+        }
+        $this->renderAuth('auth/welcome');
+    }
+
     public function loginPage(): void {
         if (isset($_SESSION['user_id'])) {
             $this->redirect('/dashboard');
@@ -32,13 +39,13 @@ class AuthController extends Controller {
 
         if (empty($email) || empty($password)) {
             $_SESSION['login_error'] = 'Veuillez remplir tous les champs.';
-            $this->redirect('/');
+            $this->redirect('/login');
             return;
         }
 
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $_SESSION['login_error'] = 'Adresse email invalide.';
-            $this->redirect('/');
+            $this->redirect('/login');
             return;
         }
 
@@ -46,13 +53,13 @@ class AuthController extends Controller {
 
         if (!$user || !$this->userModel->verifyPassword($password, $user['password'])) {
             $_SESSION['login_error'] = 'Email ou mot de passe incorrect.';
-            $this->redirect('/');
+            $this->redirect('/login');
             return;
         }
 
         if ($user['status'] !== 'active') {
             $_SESSION['login_error'] = 'Votre compte est désactivé.';
-            $this->redirect('/');
+            $this->redirect('/login');
             return;
         }
 
@@ -74,7 +81,7 @@ class AuthController extends Controller {
             $this->history->log($_SESSION['user_id'], 'LOGOUT', 'Déconnexion');
         }
         session_destroy();
-        $this->redirect('/');
+        $this->redirect('/login');
     }
 
     public function registerPage(): void {

@@ -4,14 +4,20 @@ require_once ROOT . '/Controllers/Csrf.php';
 class Controller {
     protected function render(string $view, array $data = []): void {
         extract($data);
-        $viewFile = ROOT . '/Views/frontoffice/' . $view . '.php';
+        $viewFile = ROOT . '/Views/backoffice/' . $view . '.php';
         if (!file_exists($viewFile)) {
             http_response_code(500);
             die("Vue introuvable : " . htmlspecialchars($view));
         }
-        require ROOT . '/Views/frontoffice/partials/header.php';
+        $headerFile = ROOT . '/Views/backoffice/components/header.php';
+        $footerFile = ROOT . '/Views/backoffice/components/footer.php';
+        if (!file_exists($headerFile) || !file_exists($footerFile)) {
+            $headerFile = ROOT . '/Views/backoffice/partials/header.php';
+            $footerFile = ROOT . '/Views/backoffice/partials/footer.php';
+        }
+        require $headerFile;
         require $viewFile;
-        require ROOT . '/Views/frontoffice/partials/footer.php';
+        require $footerFile;
     }
 
     protected function renderAuth(string $view, array $data = []): void {
@@ -31,7 +37,7 @@ class Controller {
 
     protected function requireAuth(): void {
         if (!isset($_SESSION['user_id'])) {
-            $this->redirect('/');
+            $this->redirect('/login');
         }
     }
 

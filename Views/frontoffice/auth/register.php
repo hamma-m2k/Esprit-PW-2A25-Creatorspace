@@ -85,7 +85,7 @@
     </form>
 
     <div class="auth-footer-text">
-      Déjà un compte ? <a href="<?= BASE_URL ?>/" class="auth-link">Se connecter</a>
+      Déjà un compte ? <a href="<?= BASE_URL ?>/login" class="auth-link">Se connecter</a>
     </div>
   </div>
 </div>
