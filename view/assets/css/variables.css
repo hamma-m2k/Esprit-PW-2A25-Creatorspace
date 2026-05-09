@@ -1,0 +1,46 @@
+/* ============================================================
+   CREATORSPACE — CSS VARIABLES
+   Thème dark (défaut) + light
+============================================================ */
+:root {
+  --primary:    #6C3FC5;
+  --secondary:  #9B5DE5;
+  --accent:     #00C2CB;
+  --success:    #38a169;
+  --warning:    #ed8936;
+  --danger:     #e53e3e;
+
+  /* Dark theme (default) */
+  --bg:         #1A1040;
+  --bg2:        #231558;
+  --bg3:        #2d1a6e;
+  --card:       #1e1248;
+  --card2:      #271660;
+  --border:     rgba(108,63,197,0.3);
+  --text:       #f0eaff;
+  --text2:      #b8a9d9;
+  --text3:      #7a6a9a;
+  --shadow:     0 8px 32px rgba(108,63,197,0.25);
+  --shadow-lg:  0 20px 60px rgba(0,0,0,0.4);
+
+  --radius:     14px;
+  --radius-sm:  8px;
+  --radius-xs:  6px;
+  --transition: 0.25s ease;
+  --sidebar-w:  250px;
+  --topnav-h:   64px;
+}
+
+[data-theme="light"] {
+  --bg:     #F4F0FF;
+  --bg2:    #ede6ff;
+  --bg3:    #e0d5ff;
+  --card:   #ffffff;
+  --card2:  #f8f4ff;
+  --border: rgba(108,63,197,0.18);
+  --text:   #1a0a3c;
+  --text2:  #4a3570;
+  --text3:  #8a7aaa;
+  --shadow: 0 8px 32px rgba(108,63,197,0.10);
+  --shadow-lg: 0 20px 60px rgba(108,63,197,0.15);
+}
