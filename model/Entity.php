@@ -136,3 +136,73 @@ class SessionManager
         return $flash;
     }
 }
+
+class Contrat
+{
+    private ?int $id = null;
+    private string $titre = '';
+    private string $description = '';
+    private string $type = 'CDI';
+    private ?string $signature = null;
+    private ?int $signed_by = null;
+    private string $statut = 'brouillon';
+    private ?int $created_by = null;
+    private ?string $created_at = null;
+
+    public function __construct(array $row = [])
+    {
+        foreach ($row as $k => $v) {
+            if (property_exists($this, $k)) $this->$k = $v;
+        }
+    }
+
+    public function getId(): ?int             { return $this->id; }
+    public function setId(int $v): void       { $this->id = $v; }
+    public function getTitre(): string        { return $this->titre; }
+    public function setTitre(string $v): void { $this->titre = $v; }
+    public function getDescription(): string  { return $this->description; }
+    public function setDescription(string $v): void { $this->description = $v; }
+    public function getType(): string         { return $this->type; }
+    public function setType(string $v): void  { $this->type = $v; }
+    public function getSignature(): ?string   { return $this->signature; }
+    public function setSignature(?string $v): void  { $this->signature = $v; }
+    public function getSignedBy(): ?int       { return $this->signed_by; }
+    public function setSignedBy(?int $v): void{ $this->signed_by = $v; }
+    public function getStatut(): string       { return $this->statut; }
+    public function setStatut(string $v): void{ $this->statut = $v; }
+    public function getCreatedBy(): ?int      { return $this->created_by; }
+    public function setCreatedBy(?int $v): void { $this->created_by = $v; }
+    public function getCreatedAt(): ?string   { return $this->created_at; }
+}
+
+class Rule
+{
+    private ?int $id = null;
+    private ?int $contrat_id = null;
+    private string $titre = '';
+    private string $description = '';
+    private int $position = 0;
+    private ?int $created_by = null;
+    private ?string $created_at = null;
+
+    public function __construct(array $row = [])
+    {
+        foreach ($row as $k => $v) {
+            if (property_exists($this, $k)) $this->$k = $v;
+        }
+    }
+
+    public function getId(): ?int { return $this->id; }
+    public function setId(int $v): void { $this->id = $v; }
+    public function getContratId(): ?int { return $this->contrat_id; }
+    public function setContratId(?int $v): void { $this->contrat_id = $v; }
+    public function getTitre(): string { return $this->titre; }
+    public function setTitre(string $v): void { $this->titre = $v; }
+    public function getDescription(): string { return $this->description; }
+    public function setDescription(string $v): void { $this->description = $v; }
+    public function getPosition(): int { return $this->position; }
+    public function setPosition(int $v): void { $this->position = $v; }
+    public function getCreatedBy(): ?int { return $this->created_by; }
+    public function setCreatedBy(?int $v): void { $this->created_by = $v; }
+    public function getCreatedAt(): ?string { return $this->created_at; }
+}

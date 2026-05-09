@@ -40,182 +40,119 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-// 🩺 Health AI Global Logic (Analyse)
+async function runClinicalAi() {
+  const btn = document.getElementById('btn-run-health');
+  if (!btn) return;
+  const oldText = btn.textContent;
+  btn.textContent = "⌛ Analyse en cours...";
+  btn.disabled = true;
+
+  const payload = {
+    age: document.getElementById('h-age').value,
+    trestbps: document.getElementById('h-trestbps').value,
+    chol: document.getElementById('h-chol').value,
+    thalach: document.getElementById('h-thalach').value,
+    oldpeak: document.getElementById('h-oldpeak').value,
+    ca: document.getElementById('h-ca').value,
+    sex: document.getElementById('h-sex').checked ? 'male' : 'female',
+    exang: document.getElementById('h-exang').checked ? 1 : 0,
+    fbs: document.getElementById('h-fbs').checked ? 1 : 0,
+    restecg: document.getElementById('h-restecg').checked ? 1 : 0,
+    thal: document.getElementById('h-thal').checked ? 1 : 0,
+    smoker: document.getElementById('h-smoker').checked ? 1 : 0
+  };
+
+  try {
+    const response = await fetch('index.php?ctrl=user&action=healthAi', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await response.json();
+
+    if (data.error) {
+      alert("Erreur: " + data.error);
+    } else {
+      document.getElementById('health-form-step').style.display = 'none';
+      document.getElementById('health-result-step').style.display = 'block';
+
+      document.getElementById('res-diag').textContent = data.diagnostic;
+      document.getElementById('res-score').textContent = data.score + '%';
+      
+      const badge = document.getElementById('res-badge');
+      badge.textContent = data.diagnostic;
+      badge.className = 'diag-badge ' + (data.score > 50 ? 'badge-high' : 'badge-low');
+
+      const probBox = document.getElementById('prob-container');
+      probBox.innerHTML = '';
+      const probColors = { absence: '#48BB78', stade1: '#ED8936', stade2: '#F6AD55', stade3: '#E53E3E' };
+      const probLabels = { absence: 'Absence de maladie', stade1: 'Stade 1 (léger)', stade2: 'Stade 2 (modéré)', stade3: 'Stade 3 (sévère)' };
+      
+      for (const [key, val] of Object.entries(data.probabilities)) {
+        probBox.innerHTML += `
+          <div class="prob-row">
+            <span class="prob-label">${probLabels[key]}</span>
+            <div class="prob-bar-bg"><div class="prob-bar-fill" style="width:${val}%; background:${probColors[key]}"></div></div>
+            <span class="prob-val">${val}%</span>
+          </div>
+        `;
+      }
+
+      const featBox = document.getElementById('feat-container');
+      featBox.innerHTML = '';
+      data.importance.forEach(f => {
+        featBox.innerHTML += `
+          <div class="feat-row">
+            <span class="feat-label">${f.feature}</span>
+            <div class="feat-dot"></div>
+            <div class="feat-bar"><div class="feat-bar-fill" style="width:${f.value}%"></div></div>
+            <span style="font-size:0.75rem; color:var(--text3); width:30px; text-align:right;">${f.value}%</span>
+          </div>
+        `;
+      });
+
+      const tipsBox = document.getElementById('res-tips');
+      tipsBox.innerHTML = '';
+      data.conseils.forEach(c => {
+        tipsBox.innerHTML += `<li>${c}</li>`;
+      });
+    }
+  } catch (e) {
+    console.error(e);
+    alert("Erreur technique lors de l'analyse.");
+  } finally {
+    btn.textContent = oldText;
+    btn.disabled = false;
+  }
+}
+
 function resetHealthForm() {
-  document.getElementById('health-form-step').style.display = 'block';
-  document.getElementById('health-result-step').style.display = 'none';
-}
-
-async function runClinicalAi() {
-  const btn = document.getElementById('btn-run-health');
-  if (!btn) return;
-  const oldText = btn.textContent;
-  btn.textContent = "⌛ Analyse en cours...";
-  btn.disabled = true;
-
-  const payload = {
-    age: document.getElementById('h-age').value,
-    trestbps: document.getElementById('h-trestbps').value,
-    chol: document.getElementById('h-chol').value,
-    thalach: document.getElementById('h-thalach').value,
-    oldpeak: document.getElementById('h-oldpeak').value,
-    ca: document.getElementById('h-ca').value,
-    sex: document.getElementById('h-sex').checked ? 'male' : 'female',
-    exang: document.getElementById('h-exang').checked ? 1 : 0,
-    fbs: document.getElementById('h-fbs').checked ? 1 : 0,
-    restecg: document.getElementById('h-restecg').checked ? 1 : 0,
-    thal: document.getElementById('h-thal').checked ? 1 : 0,
-    smoker: document.getElementById('h-smoker').checked ? 1 : 0
-  };
-
-  try {
-    const response = await fetch('index.php?ctrl=user&action=healthAi', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const data = await response.json();
-
-    if (data.error) {
-      alert("Erreur: " + data.error);
-    } else {
-      document.getElementById('health-form-step').style.display = 'none';
-      document.getElementById('health-result-step').style.display = 'block';
-
-      document.getElementById('res-diag').textContent = data.diagnostic;
-      document.getElementById('res-score').textContent = data.score + '%';
-      
-      const badge = document.getElementById('res-badge');
-      badge.textContent = data.diagnostic;
-      badge.className = 'diag-badge ' + (data.score > 50 ? 'badge-high' : 'badge-low');
-
-      const probBox = document.getElementById('prob-container');
-      probBox.innerHTML = '';
-      const probColors = { absence: '#48BB78', stade1: '#ED8936', stade2: '#F6AD55', stade3: '#E53E3E' };
-      const probLabels = { absence: 'Absence de maladie', stade1: 'Stade 1 (léger)', stade2: 'Stade 2 (modéré)', stade3: 'Stade 3 (sévère)' };
-      
-      for (const [key, val] of Object.entries(data.probabilities)) {
-        probBox.innerHTML += `
-          <div class="prob-row">
-            <span class="prob-label">${probLabels[key]}</span>
-            <div class="prob-bar-bg"><div class="prob-bar-fill" style="width:${val}%; background:${probColors[key]}"></div></div>
-            <span class="prob-val">${val}%</span>
-          </div>
-        `;
-      }
-
-      const featBox = document.getElementById('feat-container');
-      featBox.innerHTML = '';
-      data.importance.forEach(f => {
-        featBox.innerHTML += `
-          <div class="feat-row">
-            <span class="feat-label">${f.feature}</span>
-            <div class="feat-dot"></div>
-            <div class="feat-bar"><div class="feat-bar-fill" style="width:${f.value}%"></div></div>
-            <span style="font-size:0.75rem; color:var(--text3); width:30px; text-align:right;">${f.value}%</span>
-          </div>
-        `;
-      });
-
-      const tipsBox = document.getElementById('res-tips');
-      tipsBox.innerHTML = '';
-      data.conseils.forEach(c => {
-        tipsBox.innerHTML += `<li>${c}</li>`;
-      });
-    }
-  } catch (e) {
-    console.error(e);
-    alert("Erreur technique lors de l'analyse.");
-  } finally {
-    btn.textContent = oldText;
-    btn.disabled = false;
-  }
-}
-
-async function runClinicalAi() {
-  const btn = document.getElementById('btn-run-health');
-  if (!btn) return;
-  const oldText = btn.textContent;
-  btn.textContent = "⌛ Analyse en cours...";
-  btn.disabled = true;
-
-  const payload = {
-    age: document.getElementById('h-age').value,
-    trestbps: document.getElementById('h-trestbps').value,
-    chol: document.getElementById('h-chol').value,
-    thalach: document.getElementById('h-thalach').value,
-    oldpeak: document.getElementById('h-oldpeak').value,
-    ca: document.getElementById('h-ca').value,
-    sex: document.getElementById('h-sex').checked ? 'male' : 'female',
-    exang: document.getElementById('h-exang').checked ? 1 : 0,
-    fbs: document.getElementById('h-fbs').checked ? 1 : 0,
-    restecg: document.getElementById('h-restecg').checked ? 1 : 0,
-    thal: document.getElementById('h-thal').checked ? 1 : 0,
-    smoker: document.getElementById('h-smoker').checked ? 1 : 0
-  };
-
-  try {
-    const response = await fetch('index.php?ctrl=user&action=healthAi', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const data = await response.json();
-
-    if (data.error) {
-      alert("Erreur: " + data.error);
-    } else {
-      document.getElementById('health-form-step').style.display = 'none';
-      document.getElementById('health-result-step').style.display = 'block';
-
-      document.getElementById('res-diag').textContent = data.diagnostic;
-      document.getElementById('res-score').textContent = data.score + '%';
-      
-      const badge = document.getElementById('res-badge');
-      badge.textContent = data.diagnostic;
-      badge.className = 'diag-badge ' + (data.score > 50 ? 'badge-high' : 'badge-low');
-
-      const probBox = document.getElementById('prob-container');
-      probBox.innerHTML = '';
-      const probColors = { absence: '#48BB78', stade1: '#ED8936', stade2: '#F6AD55', stade3: '#E53E3E' };
-      const probLabels = { absence: 'Absence de maladie', stade1: 'Stade 1 (léger)', stade2: 'Stade 2 (modéré)', stade3: 'Stade 3 (sévère)' };
-      
-      for (const [key, val] of Object.entries(data.probabilities)) {
-        probBox.innerHTML += `
-          <div class="prob-row">
-            <span class="prob-label">${probLabels[key]}</span>
-            <div class="prob-bar-bg"><div class="prob-bar-fill" style="width:${val}%; background:${probColors[key]}"></div></div>
-            <span class="prob-val">${val}%</span>
-          </div>
-        `;
-      }
-
-      const featBox = document.getElementById('feat-container');
-      featBox.innerHTML = '';
-      data.importance.forEach(f => {
-        featBox.innerHTML += `
-          <div class="feat-row">
-            <span class="feat-label">${f.feature}</span>
-            <div class="feat-dot"></div>
-            <div class="feat-bar"><div class="feat-bar-fill" style="width:${f.value}%"></div></div>
-            <span style="font-size:0.75rem; color:var(--text3); width:30px; text-align:right;">${f.value}%</span>
-          </div>
-        `;
-      });
-
-      const tipsBox = document.getElementById('res-tips');
-      tipsBox.innerHTML = '';
-      data.conseils.forEach(c => {
-        tipsBox.innerHTML += `<li>${c}</li>`;
-      });
-    }
-  } catch (e) {
-    console.error(e);
-    alert("Erreur technique lors de l'analyse.");
-  } finally {
-    btn.textContent = oldText;
-    btn.disabled = false;
-  }
+    document.getElementById('h-age').value = 52;
+    document.getElementById('val-age').textContent = '52';
+    document.getElementById('h-trestbps').value = 130;
+    document.getElementById('val-trestbps').textContent = '130';
+    document.getElementById('h-chol').value = 240;
+    document.getElementById('val-chol').textContent = '240';
+    document.getElementById('h-thalach').value = 150;
+    document.getElementById('val-thalach').textContent = '150';
+    document.getElementById('h-oldpeak').value = 1.0;
+    document.getElementById('val-oldpeak').textContent = '1.0';
+    document.getElementById('h-ca').value = 0;
+    document.getElementById('val-ca').textContent = '0';
+    document.getElementById('h-sex').checked = true;
+    document.getElementById('h-exang').checked = false;
+    document.getElementById('h-fbs').checked = false;
+    document.getElementById('h-restecg').checked = false;
+    document.getElementById('h-thal').checked = false;
+    document.getElementById('h-smoker').checked = false;
+    document.getElementById('health-form-step').style.display = 'block';
+    document.getElementById('health-result-step').style.display = 'none';
+    document.getElementById('res-diag').textContent = '';
+    document.getElementById('res-score').textContent = '';
+    document.getElementById('res-badge').textContent = '';
+    document.getElementById('prob-container').innerHTML = '';
+    document.getElementById('feat-container').innerHTML = '';
+    document.getElementById('res-tips').innerHTML = '';
 }
 </script>
 

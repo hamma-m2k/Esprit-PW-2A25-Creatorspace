@@ -47,10 +47,12 @@ $isBack  = in_array($page ?? '', ['dashboard', 'users', 'profiles', 'roles', 'se
   <div class="topnav-right">
     <?php if (!empty($currentUser)): ?>
       <div class="topnav-user">
-        <div class="topnav-avatar" style="background:<?= htmlspecialchars($currentUser['color']) ?>">
-          <?= htmlspecialchars($currentUser['initials']) ?>
+        <div class="topnav-avatar" style="<?= (!empty($currentUser['profile_picture']) && file_exists(__DIR__ . '/../../' . $currentUser['profile_picture'])) ? "background: url('" . htmlspecialchars($currentUser['profile_picture']) . "') center/cover no-repeat; border:none;" : "background:" . htmlspecialchars($currentUser['color'] ?? '#6C3FC5') ?>">
+          <?php if(empty($currentUser['profile_picture']) || !file_exists(__DIR__ . '/../../' . $currentUser['profile_picture'])): ?>
+            <?= htmlspecialchars($currentUser['initials'] ?? 'U') ?>
+          <?php endif; ?>
         </div>
-        <span><?= htmlspecialchars($currentUser['name']) ?></span>
+        <span><?= htmlspecialchars($currentUser['name'] ?? 'Utilisateur') ?></span>
       </div>
       <a href="index.php?ctrl=auth&action=logout">
         <button class="btn btn-sm btn-outline">Déconnexion</button>

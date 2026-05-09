@@ -1,7 +1,7 @@
 <?php
 /**
  * FIX: Status label/class mapping removed from this view.
- * Now uses UserModel::statusLabel() and UserModel::statusClass() — data logic belongs in Model.
+ * Users list view.
  */
 require_once __DIR__ . '/layout_back.php';
 ?>

@@ -21,7 +21,7 @@ $controller = new EntityController($pdo);
 switch ($ctrl) {
 
     case 'user':
-        $allowed = ['index', 'dashboard', 'delete', 'detail', 'edit', 'create', 'profile', 'updateProfile', 'deleteOwn', 'searchUsers', 'publicProfile', 'statistics', 'toggleVerify', 'toggleBan', 'uploadAvatar', 'exportPdf', 'exportStats', 'toggle2FA', 'settings', 'chatbot', 'generateAiInsights', 'health', 'healthAi', 'userAiInsights'];
+        $allowed = ['index', 'dashboard', 'delete', 'detail', 'edit', 'create', 'profile', 'updateProfile', 'deleteOwn', 'searchUsers', 'publicProfile', 'statistics', 'toggleVerify', 'toggleBan', 'uploadAvatar', 'exportPdf', 'exportStats', 'toggle2FA', 'settings', 'chatbot', 'generateAiInsights', 'health', 'healthAi', 'userAiInsights', 'contrats', 'showContrat', 'createContratForm', 'storeContrat', 'editContrat', 'updateContratAction', 'deleteContratAction', 'statutContratAction', 'acceptContratAction', 'refuseContratAction', 'rules', 'createRuleForm', 'storeRule', 'editRule', 'updateRuleAction', 'deleteRuleAction'];
         if (!in_array($action, $allowed, true)) {
             header('Location: index.php?ctrl=auth&action=login');
             exit;
@@ -40,7 +40,7 @@ switch ($ctrl) {
 
     case 'auth':
     default:
-        $allowed = ['login', 'register', 'logout', 'error', 'verify2FA'];
+        $allowed = ['login', 'register', 'logout', 'error', 'verify2FA', 'ocrCin'];
         if (!in_array($action, $allowed, true)) {
             $action = 'login';
         }

@@ -1,7 +1,7 @@
 <?php
 /**
  * FIX: Role data removed from this view — was hardcoded here (business logic in view).
- * $roles is now passed from BackController which fetches it from UserModel::getRoles().
+ * $roles is now passed from BackController.
  */
 require_once __DIR__ . '/layout_back.php';
 ?>

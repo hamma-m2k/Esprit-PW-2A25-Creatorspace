@@ -32,6 +32,65 @@
       <p style="text-align:center; color:var(--text3); font-size:0.88rem;
                 margin-bottom:28px;">Rejoins la communauté CreatorSpace</p>
 
+      <!-- 🔍 AI OCR SCAN CIN -->
+      <div style="background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:24px;">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+          <span style="font-size:1.5rem;">🪪</span>
+          <div style="flex:1;">
+            <h4 style="margin:0; font-size:0.9rem; font-weight:700;">Scan Intelligent CIN</h4>
+            <p style="margin:0; font-size:0.75rem; color:var(--text3);">Remplissage automatique par IA</p>
+          </div>
+          <button type="button" class="btn btn-outline" id="btn-scan-cin" style="padding:6px 12px; font-size:0.75rem;">
+            📷 Scanner
+          </button>
+        </div>
+        <input type="file" id="cin-file" accept="image/*" style="display:none;" />
+        <div id="scan-loading" style="display:none; text-align:center; font-size:0.75rem; color:var(--accent);">
+          <span class="spinner" style="display:inline-block; margin-right:6px;">⌛</span> Analyse de la carte en cours...
+        </div>
+      </div>
+
+      <script>
+        document.getElementById('btn-scan-cin').onclick = () => document.getElementById('cin-file').click();
+        
+        document.getElementById('cin-file').onchange = async function(e) {
+            if (!e.target.files.length) return;
+            
+            const file = e.target.files[0];
+            const btn = document.getElementById('btn-scan-cin');
+            const loader = document.getElementById('scan-loading');
+            
+            const formData = new FormData();
+            formData.append('cin', file);
+            
+            btn.disabled = true;
+            loader.style.display = 'block';
+            
+            try {
+                const response = await fetch('index.php?ctrl=auth&action=ocrCin', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    // Fill fields
+                    document.getElementsByName('nom')[0].value = data.nom;
+                    document.getElementsByName('prenom')[0].value = data.prenom;
+                    document.getElementsByName('mail')[0].value = data.mail;
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Erreur lors de l'analyse IA.");
+            } finally {
+                btn.disabled = false;
+                loader.style.display = 'none';
+            }
+        };
+      </script>
+
       <!-- POST → ctrl=auth&action=register — NO HTML5 attributes -->
       <form method="POST" action="index.php?ctrl=auth&action=register">
 

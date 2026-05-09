@@ -5,6 +5,7 @@
  */
 require_once __DIR__ . '/../layout/header.php';
 ?>
+<link rel="stylesheet" href="View/assets/css/contracts.css">
 <style>
 /* ── Health AI Dashboard ───────────────── */
 .health-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
@@ -17,6 +18,7 @@ require_once __DIR__ . '/../layout/header.php';
 .diag-badge       { padding: 6px 16px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; }
 .badge-low        { background: rgba(56,161,105,0.2); color: #68D391; }
 .badge-high       { background: rgba(229,62,62,0.2); color: #FC8181; }
+
 
 .prob-row         { display: flex; align-items: center; gap: 15px; margin-bottom: 12px; }
 .prob-label       { width: 140px; font-size: 0.85rem; color: var(--text2); }
@@ -84,6 +86,22 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
         <button class="sidebar-item" onclick="openModal('health-modal')">
           <span class="sidebar-icon">🩺</span><span>Santé IA</span>
         </button>
+        <?php 
+        $role = $currentUser['role'] ?? '';
+        $type_compte = $_SESSION['type_compte'] ?? '';
+        if ($role === 'admin' || $type_compte === 'societe' || $type_compte === 'createur'): 
+        ?>
+        <a href="index.php?ctrl=user&action=contrats">
+          <button class="sidebar-item <?= $page === 'contrats' ? 'active' : '' ?>">
+            <span class="sidebar-icon">📄</span><span>Contrat</span>
+          </button>
+        </a>
+        <a href="index.php?ctrl=user&action=rules">
+          <button class="sidebar-item <?= $page === 'rules' ? 'active' : '' ?>">
+            <span class="sidebar-icon">⚖️</span><span>Rules</span>
+          </button>
+        </a>
+        <?php endif; ?>
         <a href="index.php?ctrl=user&action=searchUsers">
           <button class="sidebar-item <?= $page === 'search' ? 'active' : '' ?>">
             <span class="sidebar-icon">🔍</span><span>Rechercher</span>
@@ -105,8 +123,10 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
       </nav>
       <div class="sidebar-footer">
         <div class="sidebar-user">
-          <div class="sidebar-avatar" style="<?php if(!empty($currentUser['profile_picture'])): ?>background: url('<?= htmlspecialchars($currentUser['profile_picture']) ?>') center/cover; color: transparent;<?php endif; ?>">
-            <?php if(empty($currentUser['profile_picture'])): ?><?= htmlspecialchars($currentUser['initials'] ?? 'AD') ?><?php endif; ?>
+          <div class="sidebar-avatar" style="<?php if(!empty($currentUser['profile_picture']) && file_exists(__DIR__ . '/../../' . $currentUser['profile_picture'])): ?>background: url('<?= htmlspecialchars($currentUser['profile_picture']) ?>') center/cover no-repeat; border:none;<?php endif; ?>">
+            <?php if(empty($currentUser['profile_picture']) || !file_exists(__DIR__ . '/../../' . $currentUser['profile_picture'])): ?>
+              <?= htmlspecialchars($currentUser['initials'] ?? 'AD') ?>
+            <?php endif; ?>
           </div>
           <div class="sidebar-user-info">
             <div class="sidebar-uname"><?= htmlspecialchars($currentUser['name'] ?? 'Admin') ?></div>

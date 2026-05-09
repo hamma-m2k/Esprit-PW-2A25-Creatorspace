@@ -272,6 +272,11 @@ class EntityController
         return $stats;
     }
 
+    private function refuserDemande(int $id): bool {
+        $stmt = $this->pdo->prepare("DELETE FROM `user` WHERE id = ? AND is_accepted = 0");
+        return $stmt->execute([$id]);
+    }
+
     // ==========================================================
     // ── AUTH ──────────────────────────────────────────────────
     // ==========================================================
@@ -322,6 +327,7 @@ class EntityController
                     $_SESSION['nom']     = $user->getNom();
                     $_SESSION['role']    = $user->getRole();
                     $_SESSION['mail']    = $user->getMail();
+                    $_SESSION['type_compte'] = $user->getTypeCompte();
                     $_SESSION['profile_picture'] = $user->getProfilePicture();
 
                     if ($user->getRole() === 'admin') {
@@ -434,38 +440,48 @@ class EntityController
 
     private function send2FACode(string $email, string $code): void
     {
-        require_once __DIR__ . '/../View/lib/phpmailer/Exception.php';
-        require_once __DIR__ . '/../View/lib/phpmailer/PHPMailer.php';
-        require_once __DIR__ . '/../View/lib/phpmailer/SMTP.php';
+        $mailerDir = __DIR__ . '/../View/lib/phpmailer/';
+        $phpMailerFile = $mailerDir . 'PHPMailer.php';
+        $smtpFile      = $mailerDir . 'SMTP.php';
+        $exceptionFile = $mailerDir . 'Exception.php';
 
-        $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+        // Check PHPMailer files are available
+        if (!file_exists($phpMailerFile) || !file_exists($smtpFile)) {
+            // Fallback: use PHP built-in mail() — less reliable but avoids fatal error
+            $subject = "Votre code de vérification CreatorSpace";
+            $message = "Bonjour,\n\nVotre code de double authentification est : $code\n\nSi vous n'avez pas tenté de vous connecter, ignorez cet email.";
+            $headers = "From: noreply@creatorspace.com\r\nContent-Type: text/plain; charset=UTF-8";
+            @mail($email, $subject, $message, $headers);
+            return;
+        }
+
+        require_once $exceptionFile;
+        require_once $phpMailerFile;
+        require_once $smtpFile;
 
         try {
-            // Configuration SMTP
+            $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
             $mail->isSMTP();
             $mail->Host       = 'smtp.gmail.com';
             $mail->SMTPAuth   = true;
             $mail->Username   = 'marzouguim67@gmail.com';
-            $mail->Password   = 'rqriwlvnrzvlcbxz'; // <-- Mot de passe d'application Gmail inséré
+            $mail->Password   = 'rqriwlvnrzvlcbxz';
             $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port       = 587;
 
-            // Destinataire et Expéditeur
             $mail->setFrom('marzouguim67@gmail.com', 'CreatorSpace Security');
             $mail->addAddress($email);
 
-            // Contenu de l'email
             $mail->isHTML(false);
             $mail->Subject = "Votre code de verification CreatorSpace";
             $mail->Body    = "Bonjour,\n\nVotre code de double authentification est : " . $code . "\n\nSi vous n'avez pas tente de vous connecter, ignorez cet email.";
-
             $mail->send();
-            
-        } catch (\PHPMailer\PHPMailer\Exception $e) {
-            // Optionnel : gérer l'erreur de manière silencieuse ou via une autre méthode
-            // (le fichier de log a été retiré pour garder le projet propre)
+        } catch (\Exception $e) {
+            // Log silently — do not crash the app
+            error_log('[CreatorSpace 2FA] PHPMailer error: ' . $e->getMessage());
         }
     }
+
 
     public function verify2FA(): void
     {
@@ -488,6 +504,7 @@ class EntityController
                 $_SESSION['nom']     = $user->getNom();
                 $_SESSION['role']    = $user->getRole();
                 $_SESSION['mail']    = $user->getMail();
+                $_SESSION['type_compte'] = $user->getTypeCompte();
                 $_SESSION['profile_picture'] = $user->getProfilePicture();
                 unset($_SESSION['temp_user_id']);
 
@@ -1047,6 +1064,7 @@ class EntityController
 
             $_SESSION['nom']     = trim($_POST['nom']);
             $_SESSION['mail']    = trim($_POST['mail']);
+            $_SESSION['type_compte'] = trim($_POST['type_compte'] ?? 'user');
             $_SESSION['success'] = "Profil mis à jour avec succès.";
             header('Location: index.php?ctrl=user&action=profile');
             exit;
@@ -1237,6 +1255,16 @@ class EntityController
         $this->render('backoffice/settings', compact('user', 'page', 'currentUser', 'demandesEnAttente', 'successMsg'));
     }
 
+    public function health(): void
+    {
+        $this->checkLogged();
+        $page = 'health';
+        $currentUser = $this->sessionUser();
+        $demandesEnAttente = $this->countDemandesEnAttente();
+        // Use HealthModel if needed, but for now we render the dash
+        $this->render('backoffice/layout_back', compact('page', 'currentUser', 'demandesEnAttente'));
+    }
+
     /**
      * Appelle generateContent en essayant plusieurs modèles (quotas / disponibilité différents selon le plan).
      *
@@ -1245,12 +1273,21 @@ class EntityController
      */
     private function geminiGenerateContent(string $apiKey, array $payload): array
     {
-        $models = [
+        $models = $this->geminiListModelsGenerateContent($apiKey);
+        if (empty($models)) {
+            $models = [
+                'gemini-2.5-flash',
+                'gemini-2.0-flash',
+                'gemini-1.5-flash',
+            ];
+        }
+        $fallbackModels = [
             'gemini-2.5-flash-lite',
             'gemini-2.5-flash',
             'gemini-2.0-flash',
             'gemini-1.5-flash',
         ];
+        $models = array_values(array_unique(array_merge($models, $fallbackModels)));
         $lastMsg = '';
 
         foreach ($models as $model) {
@@ -1288,15 +1325,110 @@ class EntityController
         return ['ok' => false, 'message' => $lastMsg];
     }
 
+    /**
+     * Retourne les modèles Gemini qui supportent generateContent.
+     *
+     * @return array<int,string>
+     */
+    private function geminiListModelsGenerateContent(string $apiKey): array
+    {
+        $url = 'https://generativelanguage.googleapis.com/v1beta/models?key=' . rawurlencode($apiKey);
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPGET, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+        $response = curl_exec($ch);
+        $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200 || $response === false || $response === '') {
+            return [];
+        }
+
+        $decoded = json_decode($response, true);
+        if (!is_array($decoded) || empty($decoded['models']) || !is_array($decoded['models'])) {
+            return [];
+        }
+
+        $preferred = [];
+        $others = [];
+
+        foreach ($decoded['models'] as $model) {
+            if (
+                !is_array($model)
+                || empty($model['name'])
+                || empty($model['supportedGenerationMethods'])
+                || !is_array($model['supportedGenerationMethods'])
+            ) {
+                continue;
+            }
+
+            if (!in_array('generateContent', $model['supportedGenerationMethods'], true)) {
+                continue;
+            }
+
+            $name = (string)$model['name']; // ex: models/gemini-2.5-flash
+            if (!str_starts_with($name, 'models/')) {
+                continue;
+            }
+            $short = substr($name, 7);
+            if ($short === '') {
+                continue;
+            }
+
+            if (preg_match('/gemini-.*flash/i', $short)) {
+                $preferred[] = $short;
+            } else {
+                $others[] = $short;
+            }
+        }
+
+        return array_values(array_unique(array_merge($preferred, $others)));
+    }
+
     private function geminiQuotaMessageFr(string $technicalMessage): string
     {
         if (preg_match('/quota|rate.?limit|429|exceeded|limit:\s*0/i', $technicalMessage)) {
-            return 'Quota Google AI atteint ou aucun crédit gratuit pour ces modèles. '
-                . 'Ouvrez Google AI Studio pour vérifier votre clé, les quotas et la facturation '
-                . '(https://ai.google.dev/gemini-api/docs/rate-limits), puis réessayez dans une minute.';
+            return "Le service IA est temporairement indisponible (quota atteint).";
         }
 
-        return "Erreur API Gemini : $technicalMessage";
+        return "Le service IA est temporairement indisponible.";
+    }
+
+    private function getGeminiApiKey(): string
+    {
+        $fromEnv = trim((string)getenv('GEMINI_API_KEY'));
+        if ($fromEnv !== '') {
+            return $fromEnv;
+        }
+        if (!empty($_SERVER['GEMINI_API_KEY'])) {
+            return trim((string)$_SERVER['GEMINI_API_KEY']);
+        }
+        if (!empty($_ENV['GEMINI_API_KEY'])) {
+            return trim((string)$_ENV['GEMINI_API_KEY']);
+        }
+
+        $configPaths = [
+            __DIR__ . '/../config/app.local.php',
+            __DIR__ . '/../config/app.php',
+        ];
+        foreach ($configPaths as $path) {
+            if (!file_exists($path)) {
+                continue;
+            }
+            $config = require $path;
+            if (
+                is_array($config)
+                && !empty($config['gemini_api_key'])
+                && is_string($config['gemini_api_key'])
+            ) {
+                return trim($config['gemini_api_key']);
+            }
+        }
+
+        return '';
     }
 
     public function chatbot(): void
@@ -1316,7 +1448,7 @@ class EntityController
             exit;
         }
 
-        $apiKey = 'AIzaSyBdi-n5tU1slMszRjVO9ECsTI7cYz_TiW8'; // <-- Clé Gemini de l'utilisateur insérée
+        $apiKey = $this->getGeminiApiKey();
 
         // System prompt context
         $systemPrompt = "Tu es l'assistant IA officiel de CreatorSpace, une plateforme web qui met en relation des créateurs de contenu et des sociétés. 
@@ -1334,11 +1466,14 @@ Si la question ne concerne pas CreatorSpace, la création de contenu ou la plate
             ]
         ];
 
+        if ($apiKey === '') {
+            echo json_encode(['error' => "Clé Gemini manquante: configurez GEMINI_API_KEY côté serveur."]);
+            exit;
+        }
+
         $gen = $this->geminiGenerateContent($apiKey, $data);
         if (!$gen['ok']) {
-            echo json_encode([
-                'reply' => $this->geminiQuotaMessageFr($gen['message'] ?? 'Erreur inconnue'),
-            ]);
+            echo json_encode(['error' => $this->geminiQuotaMessageFr($gen['message'] ?? 'Erreur inconnue')]);
             exit;
         }
 
@@ -1369,7 +1504,7 @@ Si la question ne concerne pas CreatorSpace, la création de contenu ou la plate
             $statsText .= "$type: $count, ";
         }
 
-        $apiKey = 'AIzaSyBdi-n5tU1slMszRjVO9ECsTI7cYz_TiW8';
+        $apiKey = $this->getGeminiApiKey();
 
         $systemPrompt = "Tu es un Data Analyst expert pour CreatorSpace (plateforme de créateurs et sociétés). Voici les dernières statistiques de la plateforme.\n\n" . $statsText . "\n\nAgis comme un conseiller stratégique. Fournis une analyse courte, percutante (2 paragraphes maximum) et donne 2 recommandations concrètes à l'administrateur. Rédige ta réponse en HTML formaté (utilise <b>, <ul>, <li>, <br>) pour que le rendu soit beau dans une page web. Ne mets pas de balises markdown comme ```html.";
 
@@ -1383,6 +1518,11 @@ Si la question ne concerne pas CreatorSpace, la création de contenu ou la plate
                 ]
             ]
         ];
+
+        if ($apiKey === '') {
+            echo json_encode(['error' => "Clé Gemini manquante: configurez GEMINI_API_KEY côté serveur."]);
+            exit;
+        }
 
         $gen = $this->geminiGenerateContent($apiKey, $data);
         if (!$gen['ok']) {
@@ -1400,6 +1540,8 @@ Si la question ne concerne pas CreatorSpace, la création de contenu ou la plate
         echo json_encode(['insights' => trim($insights)]);
         exit;
     }
+
+
 
 
     public function healthAi(): void
@@ -1426,7 +1568,7 @@ Si la question ne concerne pas CreatorSpace, la création de contenu ou la plate
         $thal = (int)($input['thal'] ?? 0);
         $smoker = (int)($input['smoker'] ?? 0);
 
-        $apiKey = 'AIzaSyBdi-n5tU1slMszRjVO9ECsTI7cYz_TiW8';
+        $apiKey = $this->getGeminiApiKey();
 
         $systemPrompt = "Tu es un modèle d'IA spécialisé dans l'analyse de risque cardiaque basé sur le dataset Cleveland Heart Disease.
 Analyses les données suivantes d'un patient :
@@ -1473,6 +1615,11 @@ Génère une réponse JSON STRICTE (pas de markdown) avec cette structure :
             ]
         ];
 
+        if ($apiKey === '') {
+            echo json_encode(['error' => "Clé Gemini manquante: configurez GEMINI_API_KEY côté serveur."]);
+            exit;
+        }
+
         $gen = $this->geminiGenerateContent($apiKey, $data);
         if (!$gen['ok']) {
             echo json_encode(['error' => $this->geminiQuotaMessageFr($gen['message'] ?? 'Erreur inconnue')]);
@@ -1480,12 +1627,638 @@ Génère une réponse JSON STRICTE (pas de markdown) avec cette structure :
         }
 
         $result = $gen['decoded'];
-        $rawText = $result['candidates'][0]['content']['parts'][0]['text'] ?? "{}";
-        
+        $rawText = $result['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
         // Clean markdown if present
         $rawText = str_replace(['```json', '```'], '', $rawText);
-        
-        echo trim($rawText);
+        // Decode JSON response
+        $decoded = json_decode($rawText, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            echo json_encode(['error' => 'Réponse IA invalide.']);
+            exit;
+        }
+        echo json_encode($decoded);
         exit;
+    }
+
+    /**
+     * AI OCR for CIN (National Identity Card)
+     * Extracts name, first name and suggests a gmail address.
+     */
+    public function ocrCin(): void
+    {
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_FILES['cin'])) {
+            echo json_encode(['error' => 'Aucune image reçue.']);
+            exit;
+        }
+
+        $file = $_FILES['cin'];
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['error' => 'Erreur lors du téléchargement de l\'image.']);
+            exit;
+        }
+
+        $apiKey = $this->getGeminiApiKey();
+        if ($apiKey === '') {
+            echo json_encode(['error' => 'Clé API Gemini non configurée.']);
+            exit;
+        }
+
+        $imageData = base64_encode(file_get_contents($file['tmp_name']));
+        $mimeType = mime_content_type($file['tmp_name']);
+
+        $prompt = "Tu es un assistant spécialisé dans l'extraction de données de documents d'identité (CIN tunisienne ou arabe). 
+Analyses cette image de carte d'identité. La carte peut être en arabe.
+1. Extraits le Nom et le Prénom (souvent en arabe).
+2. TRADUIS ou TRANSLITTÈRES-les en français (caractères latins).
+3. Réponds UNIQUEMENT avec un objet JSON strict comme ceci :
+{
+  \"nom_arabe\": \"...\",
+  \"prenom_arabe\": \"...\",
+  \"nom_latin\": \"NOM_EN_FRANCAIS\",
+  \"prenom_latin\": \"PRENOM_EN_FRANCAIS\"
+}
+Si tu ne trouves pas les données, réponds avec des chaînes vides.";
+
+        $payload = [
+            'contents' => [
+                [
+                    'parts' => [
+                        ['text' => $prompt],
+                        [
+                            'inline_data' => [
+                                'mime_type' => $mimeType,
+                                'data' => $imageData
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        $gen = $this->geminiGenerateContent($apiKey, $payload);
+        if (!$gen['ok']) {
+            echo json_encode(['error' => $this->geminiQuotaMessageFr($gen['message'] ?? 'Erreur inconnue')]);
+            exit;
+        }
+
+        $result = $gen['decoded'];
+        $rawText = $result['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
+        $rawText = str_replace(['```json', '```'], '', $rawText);
+        $decoded = json_decode(trim($rawText), true);
+
+        if (!$decoded || !isset($decoded['nom_latin'])) {
+            echo json_encode(['error' => 'Impossible d\'extraire les données de la carte.']);
+            exit;
+        }
+
+        $nom = trim($decoded['nom_latin']);
+        $prenom = trim($decoded['prenom_latin']);
+
+        // Format for email (lowercase, no accents, no spaces)
+        $cleanNom = strtolower(iconv('UTF-8', 'ASCII//TRANSLIT', $nom));
+        $cleanNom = preg_replace('/[^a-z0-9]/', '', $cleanNom);
+        $cleanPrenom = strtolower(iconv('UTF-8', 'ASCII//TRANSLIT', $prenom));
+        $cleanPrenom = preg_replace('/[^a-z0-9]/', '', $cleanPrenom);
+
+        $mail = $cleanPrenom . '.' . $cleanNom . '@gmail.com';
+
+        echo json_encode([
+            'nom' => $nom,
+            'prenom' => $prenom,
+            'mail' => $mail
+        ]);
+        exit;
+    }
+
+    // ==========================================================
+    // ── HTTP ROUTES : CONTRATS ────────────────────────────────
+    // ==========================================================
+
+    public function contrats(): void
+    {
+        $this->checkLogged();
+        $contrats = ($_SESSION['role'] === 'admin')
+            ? $this->getAllContrats()
+            : $this->getContratsForUser((int)$_SESSION['user_id'], $_SESSION['type_compte']);
+        
+        $stats = [
+            'total'    => count($contrats),
+            'cdi'      => count(array_filter($contrats, fn($c) => $c['type'] === 'CDI')),
+            'cdd'      => count(array_filter($contrats, fn($c) => $c['type'] === 'CDD')),
+            'cdiv'     => count(array_filter($contrats, fn($c) => $c['type'] === 'CDIV')),
+            'actif'    => count(array_filter($contrats, fn($c) => $c['statut'] === 'actif')),
+            'brouillon'=> count(array_filter($contrats, fn($c) => $c['statut'] === 'brouillon')),
+        ];
+
+        $success = $_SESSION['success'] ?? null;
+        unset($_SESSION['success']);
+        
+        $page = 'contrats';
+        $currentUser = $this->sessionUser();
+        $demandesEnAttente = $this->countDemandesEnAttente();
+
+        $this->render('backoffice/contrats/index', compact('contrats', 'stats', 'success', 'page', 'currentUser', 'demandesEnAttente'));
+    }
+
+    public function showContrat(): void
+    {
+        $this->checkLogged();
+        $id = (int)($_GET['id'] ?? 0);
+        $contrat = $this->getContratById($id);
+        if (!$contrat) {
+            header('Location: index.php?ctrl=user&action=contrats');
+            exit;
+        }
+
+        $rules = $this->getRulesByContrat($id);
+        
+        $page = 'contrats';
+        $currentUser = $this->sessionUser();
+        $demandesEnAttente = $this->countDemandesEnAttente();
+
+        $this->render('backoffice/contrats/show', compact('contrat', 'rules', 'page', 'currentUser', 'demandesEnAttente'));
+    }
+
+    public function createContratForm(): void
+    {
+        $this->checkLogged();
+        if ($_SESSION['type_compte'] !== 'societe') {
+            $_SESSION['form_errors'] = ['securite' => "Seules les sociétés peuvent créer des contrats."];
+            header('Location: index.php?ctrl=user&action=contrats');
+            exit;
+        }
+        $users = $this->getAllUsers();
+        $errors = $_SESSION['form_errors'] ?? [];
+        $old = $_SESSION['form_old'] ?? [];
+        unset($_SESSION['form_errors'], $_SESSION['form_old']);
+
+        $page = 'contrats';
+        $currentUser = $this->sessionUser();
+        $demandesEnAttente = $this->countDemandesEnAttente();
+
+        $this->render('backoffice/contrats/form', compact('users', 'errors', 'old', 'page', 'currentUser', 'demandesEnAttente'));
+    }
+
+    public function storeContrat(): void
+    {
+        $this->checkLogged();
+        if ($_SESSION['type_compte'] !== 'societe') {
+            header('Location: index.php?ctrl=user&action=contrats');
+            exit;
+        }
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data = [
+                'titre'       => trim($_POST['titre'] ?? ''),
+                'description' => trim($_POST['description'] ?? ''),
+                'type'        => trim($_POST['type'] ?? 'CDI'),
+                'signature'   => trim($_POST['signature'] ?? ''),
+                'signed_by'   => !empty($_POST['signed_by']) ? (int)$_POST['signed_by'] : null,
+                'statut'      => trim($_POST['statut'] ?? 'en_attente'),
+                'created_by'  => (int)$_SESSION['user_id'],
+            ];
+
+            // Basic validation
+            $errors = [];
+            if (empty($data['titre'])) $errors['titre'] = "Le titre est requis.";
+            
+            if (!empty($errors)) {
+                $_SESSION['form_errors'] = $errors;
+                $_SESSION['form_old'] = $data;
+                header('Location: index.php?ctrl=user&action=createContratForm');
+                exit;
+            }
+
+            $id = $this->createContrat($data);
+            $_SESSION['success'] = "Contrat créé avec succès.";
+            header('Location: index.php?ctrl=user&action=showContrat&id=' . $id);
+            exit;
+        }
+    }
+
+    public function editContrat(): void
+    {
+        $this->checkLogged();
+        if ($_SESSION['type_compte'] !== 'societe') {
+            header('Location: index.php?ctrl=user&action=contrats');
+            exit;
+        }
+        $id = (int)($_GET['id'] ?? 0);
+        $contrat = $this->getContratById($id);
+        if (!$contrat) {
+            header('Location: index.php?ctrl=user&action=contrats');
+            exit;
+        }
+
+        $users = $this->getAllUsers();
+        $errors = $_SESSION['form_errors'] ?? [];
+        $old = $_SESSION['form_old'] ?? $contrat;
+        unset($_SESSION['form_errors'], $_SESSION['form_old']);
+
+        $page = 'contrats';
+        $currentUser = $this->sessionUser();
+        $demandesEnAttente = $this->countDemandesEnAttente();
+
+        $this->render('backoffice/contrats/form', compact('contrat', 'users', 'errors', 'old', 'page', 'currentUser', 'demandesEnAttente'));
+    }
+
+    public function updateContratAction(): void
+    {
+        $this->checkLogged();
+        if ($_SESSION['type_compte'] !== 'societe') {
+            header('Location: index.php?ctrl=user&action=contrats');
+            exit;
+        }
+        $id = (int)($_GET['id'] ?? 0);
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data = [
+                'titre'       => trim($_POST['titre'] ?? ''),
+                'description' => trim($_POST['description'] ?? ''),
+                'type'        => trim($_POST['type'] ?? 'CDI'),
+                'signature'   => trim($_POST['signature'] ?? ''),
+                'signed_by'   => !empty($_POST['signed_by']) ? (int)$_POST['signed_by'] : null,
+                'statut'      => trim($_POST['statut'] ?? 'en_attente'),
+            ];
+
+            $errors = [];
+            if (empty($data['titre'])) $errors['titre'] = "Le titre est requis.";
+            
+            if (!empty($errors)) {
+                $_SESSION['form_errors'] = $errors;
+                $_SESSION['form_old'] = $data;
+                header('Location: index.php?ctrl=user&action=editContrat&id=' . $id);
+                exit;
+            }
+
+            $this->updateContrat($id, $data);
+            $_SESSION['success'] = "Contrat mis à jour.";
+            header('Location: index.php?ctrl=user&action=showContrat&id=' . $id);
+            exit;
+        }
+    }
+
+    public function deleteContratAction(): void
+    {
+        $this->checkLogged();
+        if ($_SESSION['type_compte'] !== 'societe' && $_SESSION['role'] !== 'admin') {
+            header('Location: index.php?ctrl=user&action=contrats');
+            exit;
+        }
+        $id = (int)($_POST['id'] ?? $_GET['id'] ?? 0);
+        $this->deleteContrat($id);
+        $_SESSION['success'] = "Contrat supprimé.";
+        header('Location: index.php?ctrl=user&action=contrats');
+        exit;
+    }
+
+    public function acceptContratAction(): void
+    {
+        $this->checkLogged();
+        $id = (int)($_POST['id'] ?? $_GET['id'] ?? 0);
+        $contrat = $this->getContratById($id);
+        
+        if ($contrat && ($_SESSION['role'] === 'admin' || (int)$_SESSION['user_id'] === (int)$contrat['signed_by'])) {
+            $this->updateContratStatut($id, 'accepte');
+            $_SESSION['success'] = "Le contrat a été accepté.";
+        }
+        header('Location: index.php?ctrl=user&action=showContrat&id=' . $id);
+        exit;
+    }
+
+    public function refuseContratAction(): void
+    {
+        $this->checkLogged();
+        $id = (int)($_POST['id'] ?? $_GET['id'] ?? 0);
+        $contrat = $this->getContratById($id);
+        
+        if ($contrat && ($_SESSION['role'] === 'admin' || (int)$_SESSION['user_id'] === (int)$contrat['signed_by'])) {
+            $this->updateContratStatut($id, 'refuse');
+            $_SESSION['success'] = "Le contrat a été refusé.";
+        }
+        header('Location: index.php?ctrl=user&action=showContrat&id=' . $id);
+        exit;
+    }
+
+    // ==========================================================
+    // ── HTTP ROUTES : RULES ───────────────────────────────────
+    // ==========================================================
+
+    public function rules(): void
+    {
+        $this->checkLogged();
+        $rules = $this->getAllRules();
+        
+        $page = 'rules';
+        $currentUser = $this->sessionUser();
+        $demandesEnAttente = $this->countDemandesEnAttente();
+        $success = $_SESSION['success'] ?? null;
+        unset($_SESSION['success']);
+
+        $this->render('backoffice/rules/index', compact('rules', 'success', 'page', 'currentUser', 'demandesEnAttente'));
+    }
+
+    public function createRuleForm(): void
+    {
+        $this->checkLogged();
+        $contrats = $this->getAllContrats();
+        $contratId = (int)($_GET['contrat_id'] ?? 0);
+        $errors = $_SESSION['form_errors'] ?? [];
+        $old = $_SESSION['form_old'] ?? ['contrat_id' => $contratId];
+        unset($_SESSION['form_errors'], $_SESSION['form_old']);
+
+        $page = 'rules';
+        $currentUser = $this->sessionUser();
+        $demandesEnAttente = $this->countDemandesEnAttente();
+
+        $this->render('backoffice/rules/form', compact('contrats', 'errors', 'old', 'page', 'currentUser', 'demandesEnAttente'));
+    }
+
+    public function storeRule(): void
+    {
+        $this->checkLogged();
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data = [
+                'titre'       => trim($_POST['titre'] ?? ''),
+                'description' => trim($_POST['description'] ?? ''),
+                'contrat_id'  => (int)$_POST['contrat_id'],
+                'position'    => !empty($_POST['position']) ? (int)$_POST['position'] : null,
+                'created_by'  => (int)$_SESSION['user_id'],
+            ];
+
+            $errors = [];
+            if (empty($data['titre'])) $errors['titre'] = "Le titre est requis.";
+            if (empty($data['contrat_id'])) $errors['contrat_id'] = "Un contrat doit être sélectionné.";
+            
+            if (!empty($errors)) {
+                $_SESSION['form_errors'] = $errors;
+                $_SESSION['form_old'] = $data;
+                header('Location: index.php?ctrl=user&action=createRule&contrat_id=' . $data['contrat_id']);
+                exit;
+            }
+
+            $this->createRule($data);
+            $_SESSION['success'] = "Règle ajoutée avec succès.";
+            header('Location: index.php?ctrl=user&action=showContrat&id=' . $data['contrat_id']);
+            exit;
+        }
+    }
+
+    public function editRule(): void
+    {
+        $this->checkLogged();
+        $id = (int)($_GET['id'] ?? 0);
+        $rule = $this->getRuleById($id);
+        if (!$rule) {
+            header('Location: index.php?ctrl=user&action=rules');
+            exit;
+        }
+
+        $contrats = $this->getAllContrats();
+        $errors = $_SESSION['form_errors'] ?? [];
+        $old = $_SESSION['form_old'] ?? $rule;
+        unset($_SESSION['form_errors'], $_SESSION['form_old']);
+
+        $page = 'rules';
+        $currentUser = $this->sessionUser();
+        $demandesEnAttente = $this->countDemandesEnAttente();
+
+        $this->render('backoffice/rules/form', compact('rule', 'contrats', 'errors', 'old', 'page', 'currentUser', 'demandesEnAttente'));
+    }
+
+    public function updateRuleAction(): void
+    {
+        $this->checkLogged();
+        $id = (int)($_GET['id'] ?? 0);
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data = [
+                'titre'       => trim($_POST['titre'] ?? ''),
+                'description' => trim($_POST['description'] ?? ''),
+                'position'    => !empty($_POST['position']) ? (int)$_POST['position'] : null,
+            ];
+
+            $errors = [];
+            if (empty($data['titre'])) $errors['titre'] = "Le titre est requis.";
+            
+            if (!empty($errors)) {
+                $_SESSION['form_errors'] = $errors;
+                $_SESSION['form_old'] = $data;
+                header('Location: index.php?ctrl=user&action=editRule&id=' . $id);
+                exit;
+            }
+
+            $this->updateRule($id, $data);
+            $_SESSION['success'] = "Règle modifiée.";
+            
+            $rule = $this->getRuleById($id);
+            header('Location: index.php?ctrl=user&action=showContrat&id=' . $rule['contrat_id']);
+            exit;
+        }
+    }
+
+    public function deleteRuleAction(): void
+    {
+        $this->checkLogged();
+        $id = (int)($_POST['id'] ?? $_GET['id'] ?? 0);
+        $rule = $this->getRuleById($id);
+        $this->deleteRule($id);
+        $_SESSION['success'] = "Règle supprimée.";
+        if ($rule) {
+            header('Location: index.php?ctrl=user&action=showContrat&id=' . $rule['contrat_id']);
+        } else {
+            header('Location: index.php?ctrl=user&action=rules');
+        }
+        exit;
+    }
+
+
+    // ==========================================================
+    // ── CONTRATS (DATABASE) ───────────────────────────────────
+    // ==========================================================
+
+    public function getAllContrats(): array
+    {
+        $stmt = $this->pdo->query('
+            SELECT c.*,
+                   u.prenom AS signataire_prenom,
+                   u.nom    AS signataire_nom,
+                   cu.prenom AS createur_prenom,
+                   cu.nom    AS createur_nom,
+                   (SELECT COUNT(*) FROM rules r WHERE r.contrat_id = c.id) AS nb_rules
+            FROM contrats c
+            LEFT JOIN user u  ON c.signed_by  = u.id
+            LEFT JOIN user cu ON c.created_by = cu.id
+            ORDER BY c.created_at DESC
+        ');
+        return $stmt->fetchAll();
+    }
+
+    public function getContratsForUser(int $userId, string $typeCompte): array
+    {
+        $whereClause = ($typeCompte === 'societe') ? 'c.created_by = ?' : 'c.signed_by = ?';
+        
+        $stmt = $this->pdo->prepare('
+            SELECT c.*,
+                   u.prenom AS signataire_prenom,
+                   u.nom    AS signataire_nom,
+                   cu.prenom AS createur_prenom,
+                   cu.nom    AS createur_nom,
+                   (SELECT COUNT(*) FROM rules r WHERE r.contrat_id = c.id) AS nb_rules
+            FROM contrats c
+            LEFT JOIN user u  ON c.signed_by  = u.id
+            LEFT JOIN user cu ON c.created_by = cu.id
+            WHERE ' . $whereClause . '
+            ORDER BY c.created_at DESC
+        ');
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll();
+    }
+
+    public function getContratById(int $id): array|false
+    {
+        $stmt = $this->pdo->prepare('
+            SELECT c.*,
+                   u.prenom AS signataire_prenom,
+                   u.nom    AS signataire_nom,
+                   u.mail   AS signataire_email
+            FROM contrats c
+            LEFT JOIN user u ON c.signed_by = u.id
+            WHERE c.id = ?
+        ');
+        $stmt->execute([$id]);
+        return $stmt->fetch();
+    }
+
+    public function createContrat(array $d): int
+    {
+        $stmt = $this->pdo->prepare('
+            INSERT INTO contrats (titre, description, type, signature, signed_by, statut, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+        ');
+        $stmt->execute([
+            $d['titre'],
+            $d['description'] ?? '',
+            $d['type'],
+            $d['signature'] ?? null,
+            $d['signed_by'] ?? null,
+            $d['statut'] ?? 'brouillon',
+            $d['created_by'] ?? null,
+        ]);
+        return (int)$this->pdo->lastInsertId();
+    }
+
+    public function updateContrat(int $id, array $d): void
+    {
+        $stmt = $this->pdo->prepare('
+            UPDATE contrats
+            SET titre=?, description=?, type=?, signature=?, signed_by=?, statut=?
+            WHERE id=?
+        ');
+        $stmt->execute([
+            $d['titre'],
+            $d['description'] ?? '',
+            $d['type'],
+            $d['signature'] ?? null,
+            $d['signed_by'] ?? null,
+            $d['statut'] ?? 'brouillon',
+            $id,
+        ]);
+    }
+
+    public function updateContratStatut(int $id, string $statut): void
+    {
+        $stmt = $this->pdo->prepare('UPDATE contrats SET statut = ? WHERE id = ?');
+        $stmt->execute([$statut, $id]);
+    }
+
+    public function deleteContrat(int $id): void
+    {
+        $stmt = $this->pdo->prepare('DELETE FROM contrats WHERE id = ?');
+        $stmt->execute([$id]);
+    }
+
+
+    // ==========================================================
+    // ── RULES (DATABASE) ──────────────────────────────────────
+    // ==========================================================
+
+    public function getAllRules(): array
+    {
+        $stmt = $this->pdo->query('
+            SELECT r.*,
+                   c.titre  AS contrat_titre,
+                   c.type   AS contrat_type,
+                   u.prenom AS auteur_prenom,
+                   u.nom    AS auteur_nom
+            FROM rules r
+            INNER JOIN contrats c ON r.contrat_id = c.id
+            LEFT  JOIN user u ON r.created_by  = u.id
+            ORDER BY r.contrat_id ASC, r.position ASC
+        ');
+        return $stmt->fetchAll();
+    }
+
+    public function getRulesByContrat(int $contratId): array
+    {
+        $stmt = $this->pdo->prepare('
+            SELECT r.*,
+                   c.titre AS contrat_titre,
+                   u.prenom AS auteur_prenom,
+                   u.nom    AS auteur_nom
+            FROM rules r
+            INNER JOIN contrats c ON r.contrat_id = c.id
+            LEFT  JOIN user u ON r.created_by  = u.id
+            WHERE r.contrat_id = ?
+            ORDER BY r.position ASC, r.id ASC
+        ');
+        $stmt->execute([$contratId]);
+        return $stmt->fetchAll();
+    }
+
+    public function getRuleById(int $id): array|false
+    {
+        $stmt = $this->pdo->prepare('
+            SELECT r.*,
+                   c.titre AS contrat_titre,
+                   c.type  AS contrat_type
+            FROM rules r
+            INNER JOIN contrats c ON r.contrat_id = c.id
+            WHERE r.id = ?
+        ');
+        $stmt->execute([$id]);
+        return $stmt->fetch();
+    }
+
+    public function createRule(array $d): int
+    {
+        $stmt = $this->pdo->prepare('SELECT COALESCE(MAX(position), 0) AS m FROM rules WHERE contrat_id = ?');
+        $stmt->execute([(int)$d['contrat_id']]);
+        $maxPos = $stmt->fetch()['m'] ?? 0;
+
+        $stmt = $this->pdo->prepare('
+            INSERT INTO rules (contrat_id, titre, description, position, source, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, NOW())
+        ');
+        $stmt->execute([
+            (int)$d['contrat_id'],
+            $d['titre'],
+            $d['description'] ?? '',
+            (int)($d['position'] ?? $maxPos + 1),
+            $d['source'] ?? 'manuel',
+            $d['created_by'] ?? null,
+        ]);
+        return (int)$this->pdo->lastInsertId();
+    }
+
+    public function updateRule(int $id, array $d): void
+    {
+        $stmt = $this->pdo->prepare('UPDATE rules SET titre=?, description=?, position=? WHERE id=?');
+        $stmt->execute([$d['titre'], $d['description'] ?? '', (int)($d['position'] ?? 0), $id]);
+    }
+
+    public function deleteRule(int $id): void
+    {
+        $stmt = $this->pdo->prepare('DELETE FROM rules WHERE id = ?');
+        $stmt->execute([$id]);
     }
 }
