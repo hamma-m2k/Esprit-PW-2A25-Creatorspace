@@ -1,0 +1,19 @@
+# Désactive le listing automatique des dossiers
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Laisse passer les fichiers/dossiers existants (assets CSS/JS, etc.)
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Tout le reste passe par index.php
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
+
+# Bloque l'accès direct aux dossiers sensibles
+<FilesMatch "\.(sql|md)$">
+    Require all denied
+</FilesMatch>
