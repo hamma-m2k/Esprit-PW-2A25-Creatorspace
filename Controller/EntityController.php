@@ -1871,6 +1871,14 @@ Si tu ne trouves pas les données, réponds avec des chaînes vides.";
             exit;
         }
         $id = (int)($_GET['id'] ?? 0);
+        
+        $contrat = $this->getContratById($id);
+        if ($contrat && $contrat['statut'] === 'accepte') {
+            $_SESSION['form_errors'] = ['statut' => "Modification interdite, contrat verrouillé."];
+            header('Location: index.php?ctrl=user&action=showContrat&id=' . $id);
+            exit;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = [
                 'titre'       => trim($_POST['titre'] ?? ''),
@@ -1918,9 +1926,17 @@ Si tu ne trouves pas les données, réponds avec des chaînes vides.";
         $id = (int)($_POST['id'] ?? $_GET['id'] ?? 0);
         $contrat = $this->getContratById($id);
         
-        if ($contrat && ($_SESSION['role'] === 'admin' || (int)$_SESSION['user_id'] === (int)$contrat['signed_by'])) {
-            $this->updateContratStatut($id, 'accepte');
-            $_SESSION['success'] = "Le contrat a été accepté.";
+        if ($contrat) {
+            // Step 1: Createur accepts
+            if ($_SESSION['type_compte'] === 'createur' && (int)$_SESSION['user_id'] === (int)$contrat['signed_by']) {
+                $this->updateContratStatut($id, 'approuve_createur');
+                $_SESSION['success'] = "Vous avez envoyé votre acceptation. En attente de l'approbation de l'administrateur.";
+            } 
+            // Step 2: Admin approves as witness
+            elseif ($_SESSION['role'] === 'admin') {
+                $this->updateContratStatut($id, 'accepte');
+                $_SESSION['success'] = "Le contrat a été définitivement approuvé (Témoin).";
+            }
         }
         header('Location: index.php?ctrl=user&action=showContrat&id=' . $id);
         exit;

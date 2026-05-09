@@ -47,7 +47,7 @@
             </form>
           </details>
 
-          <?php if ($_SESSION['type_compte'] === 'societe'): ?>
+          <?php if ($contrat['statut'] !== 'accepte' && ($_SESSION['type_compte'] === 'societe' || $_SESSION['role'] === 'admin')): ?>
           <a href="index.php?ctrl=user&action=editContrat&id=<?= $contrat['id'] ?>" class="btn btn-outline btn-sm">✎ Modifier</a>
           <?php endif; ?>
           <a href="index.php?ctrl=user&action=contrats" class="btn btn-outline btn-sm">← Retour</a>
@@ -128,17 +128,49 @@
       <?php endif; ?>
 
       <!-- Actions (Admin / Createur) -->
-      <?php if ($contrat['statut'] === 'en_attente' && ($_SESSION['role'] === 'admin' || (int)$_SESSION['user_id'] === (int)$contrat['signed_by'])): ?>
+      <?php 
+      $isSignataire = ((int)$_SESSION['user_id'] === (int)$contrat['signed_by']);
+      $isAdmin = ($_SESSION['role'] === 'admin');
+      
+      // Step 1: Createur accepte le contrat
+      if ($contrat['statut'] === 'en_attente' && $isSignataire): 
+      ?>
       <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
-        <div class="form-label" style="color:var(--accent);">Action requise</div>
-        <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Ce contrat est en attente de validation.</p>
+        <div class="form-label" style="color:var(--accent);">Action requise (Créateur)</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Veuillez lire le contrat et l'accepter pour l'envoyer à l'administrateur.</p>
         <div style="display:flex;gap:10px;">
           <form method="POST" action="index.php?ctrl=user&action=acceptContratAction&id=<?= $contrat['id'] ?>">
-            <button type="submit" class="btn btn-success btn-sm">✅ Accepter</button>
+            <button type="submit" class="btn btn-success btn-sm" style="background:#7c6fef;border:none;color:white;">Envoyer une acceptation de contrat</button>
           </form>
           <form method="POST" action="index.php?ctrl=user&action=refuseContratAction&id=<?= $contrat['id'] ?>">
-            <button type="submit" class="btn btn-danger btn-sm">❌ Refuser</button>
+            <button type="submit" class="btn btn-danger btn-sm">Refuser</button>
           </form>
+        </div>
+      </div>
+      <?php endif; ?>
+
+      <?php 
+      // Step 2: Admin approuve comme témoin
+      if ($contrat['statut'] === 'approuve_createur' && $isAdmin): 
+      ?>
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+        <div class="form-label" style="color:var(--success);">Approbation requise (Admin Témoin)</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Le créateur a accepté ce contrat. Vous devez l'approuver en tant que témoin pour le finaliser.</p>
+        <div style="display:flex;gap:10px;">
+          <form method="POST" action="index.php?ctrl=user&action=acceptContratAction&id=<?= $contrat['id'] ?>">
+            <button type="submit" class="btn btn-success btn-sm">Approuver (Témoin)</button>
+          </form>
+          <form method="POST" action="index.php?ctrl=user&action=refuseContratAction&id=<?= $contrat['id'] ?>">
+            <button type="submit" class="btn btn-danger btn-sm">Refuser</button>
+          </form>
+        </div>
+      </div>
+      <?php endif; ?>
+
+      <?php if ($contrat['statut'] === 'accepte'): ?>
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+        <div class="alert alert-success" style="margin:0;background:rgba(34, 211, 160, 0.1);color:#22d3a0;border:1px solid #22d3a0;">
+          Ce contrat a été définitivement approuvé et verrouillé. Aucune modification ne peut y être apportée.
         </div>
       </div>
       <?php endif; ?>
