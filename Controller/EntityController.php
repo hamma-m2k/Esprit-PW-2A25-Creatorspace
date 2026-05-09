@@ -1748,9 +1748,22 @@ Si tu ne trouves pas les données, réponds avec des chaînes vides.";
             'cdi'      => count(array_filter($contrats, fn($c) => $c['type'] === 'CDI')),
             'cdd'      => count(array_filter($contrats, fn($c) => $c['type'] === 'CDD')),
             'cdiv'     => count(array_filter($contrats, fn($c) => $c['type'] === 'CDIV')),
-            'actif'    => count(array_filter($contrats, fn($c) => $c['statut'] === 'actif')),
-            'brouillon'=> count(array_filter($contrats, fn($c) => $c['statut'] === 'brouillon')),
+            'accepte'  => count(array_filter($contrats, fn($c) => in_array($c['statut'], ['accepte', 'actif']))),
+            'en_attente'=> count(array_filter($contrats, fn($c) => in_array($c['statut'], ['en_attente', 'brouillon', 'approuve_createur']))),
         ];
+
+        if (isset($_GET['type'])) {
+            $contrats = array_filter($contrats, fn($c) => $c['type'] === $_GET['type']);
+        }
+        if (isset($_GET['statut'])) {
+            if ($_GET['statut'] === 'accepte') {
+                $contrats = array_filter($contrats, fn($c) => in_array($c['statut'], ['accepte', 'actif']));
+            } elseif ($_GET['statut'] === 'en_attente') {
+                $contrats = array_filter($contrats, fn($c) => in_array($c['statut'], ['en_attente', 'brouillon', 'approuve_createur']));
+            } else {
+                $contrats = array_filter($contrats, fn($c) => $c['statut'] === $_GET['statut']);
+            }
+        }
 
         $success = $_SESSION['success'] ?? null;
         unset($_SESSION['success']);
@@ -1963,6 +1976,31 @@ Si tu ne trouves pas les données, réponds avec des chaînes vides.";
         exit;
     }
 
+    public function statutContratAction(): void
+    {
+        $this->checkLogged();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: index.php?ctrl=user&action=contrats');
+            exit;
+        }
+
+        if ($_SESSION['type_compte'] !== 'societe' && $_SESSION['role'] !== 'admin') {
+            header('Location: index.php?ctrl=user&action=contrats');
+            exit;
+        }
+
+        $id = (int)($_GET['id'] ?? 0);
+        $statut = $_POST['statut'] ?? '';
+        $validStatuses = ['brouillon', 'en_attente', 'accepte', 'refuse', 'archive', 'actif', 'approuve_createur'];
+        
+        if (in_array($statut, $validStatuses)) {
+            $this->updateContratStatut($id, $statut);
+            $_SESSION['success'] = "Statut du contrat mis à jour.";
+        }
+        header('Location: index.php?ctrl=user&action=showContrat&id=' . $id);
+        exit;
+    }
+
     // ==========================================================
     // ── HTTP ROUTES : RULES ───────────────────────────────────
     // ==========================================================
@@ -1971,6 +2009,7 @@ Si tu ne trouves pas les données, réponds avec des chaînes vides.";
     {
         $this->checkLogged();
         $rules = $this->getAllRules();
+        $contrats = $this->getAllContrats();
         
         $page = 'rules';
         $currentUser = $this->sessionUser();
@@ -1978,7 +2017,7 @@ Si tu ne trouves pas les données, réponds avec des chaînes vides.";
         $success = $_SESSION['success'] ?? null;
         unset($_SESSION['success']);
 
-        $this->render('backoffice/rules/index', compact('rules', 'success', 'page', 'currentUser', 'demandesEnAttente'));
+        $this->render('backoffice/rules/index', compact('rules', 'contrats', 'success', 'page', 'currentUser', 'demandesEnAttente'));
     }
 
     public function createRuleForm(): void
@@ -1990,39 +2029,99 @@ Si tu ne trouves pas les données, réponds avec des chaînes vides.";
         $old = $_SESSION['form_old'] ?? ['contrat_id' => $contratId];
         unset($_SESSION['form_errors'], $_SESSION['form_old']);
 
+        $templates = [
+            'video_3min' => [
+                'titre' => 'Création de Contenu Vidéo',
+                'desc' => "Le créateur s'engage à réaliser une vidéo d'une durée minimum de 3 minutes mettant en avant les caractéristiques principales du produit de manière authentique et professionnelle."
+            ],
+            'publication_rs' => [
+                'titre' => 'Publication sur les Réseaux Sociaux',
+                'desc' => "La vidéo doit être publiée sur le compte TikTok et Instagram du créateur, en identifiant le compte officiel de la marque et en utilisant les hashtags dédiés à la campagne."
+            ],
+            'exclusivite' => [
+                'titre' => 'Exclusivité et Non-Concurrence',
+                'desc' => "Pendant une durée de 30 jours suivant la publication, le créateur s'engage à ne pas promouvoir de produits directement concurrents sur ses réseaux sociaux."
+            ],
+            'droits_ugc' => [
+                'titre' => "Droits d'Utilisation (UGC)",
+                'desc' => "La marque se réserve le droit d'utiliser le contenu vidéo créé à des fins publicitaires (Ads) sur l'ensemble de ses plateformes pendant une durée de 6 mois."
+            ],
+            'delais' => [
+                'titre' => 'Respect des Délais (Livrables)',
+                'desc' => "Le premier brouillon de la vidéo doit être soumis à la validation de la marque au plus tard 7 jours après la réception du produit."
+            ]
+        ];
+
         $page = 'rules';
         $currentUser = $this->sessionUser();
         $demandesEnAttente = $this->countDemandesEnAttente();
 
-        $this->render('backoffice/rules/form', compact('contrats', 'errors', 'old', 'page', 'currentUser', 'demandesEnAttente'));
+        $this->render('backoffice/rules/form', compact('contrats', 'templates', 'errors', 'old', 'page', 'currentUser', 'demandesEnAttente'));
     }
 
     public function storeRule(): void
     {
         $this->checkLogged();
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $data = [
-                'titre'       => trim($_POST['titre'] ?? ''),
-                'description' => trim($_POST['description'] ?? ''),
-                'contrat_id'  => (int)$_POST['contrat_id'],
-                'position'    => !empty($_POST['position']) ? (int)$_POST['position'] : null,
-                'created_by'  => (int)$_SESSION['user_id'],
-            ];
-
-            $errors = [];
-            if (empty($data['titre'])) $errors['titre'] = "Le titre est requis.";
-            if (empty($data['contrat_id'])) $errors['contrat_id'] = "Un contrat doit être sélectionné.";
+            $contratId = (int)($_POST['contrat_id'] ?? 0);
+            $titreCustom = trim($_POST['titre'] ?? '');
+            $descCustom = trim($_POST['description'] ?? '');
+            $position = !empty($_POST['position']) ? (int)$_POST['position'] : null;
+            $templates = $_POST['templates'] ?? []; // array of selected template keys
             
+            $errors = [];
+            if (empty($contratId)) $errors['contrat_id'] = "Un contrat doit être sélectionné.";
+            
+            // If NO templates selected AND custom title is empty
+            if (empty($templates) && empty($titreCustom)) {
+                $errors['titre'] = "Veuillez cocher au moins une règle prédéfinie OU remplir le titre d'une nouvelle règle.";
+            }
+
             if (!empty($errors)) {
                 $_SESSION['form_errors'] = $errors;
-                $_SESSION['form_old'] = $data;
-                header('Location: index.php?ctrl=user&action=createRule&contrat_id=' . $data['contrat_id']);
+                $_SESSION['form_old'] = $_POST;
+                header('Location: index.php?ctrl=user&action=createRuleForm&contrat_id=' . $contratId);
                 exit;
             }
 
-            $this->createRule($data);
-            $_SESSION['success'] = "Règle ajoutée avec succès.";
-            header('Location: index.php?ctrl=user&action=showContrat&id=' . $data['contrat_id']);
+            $defaultTemplates = [
+                'video_3min' => ['titre' => 'Création de Contenu Vidéo', 'desc' => "Le créateur s'engage à réaliser une vidéo d'une durée minimum de 3 minutes mettant en avant les caractéristiques principales du produit de manière authentique et professionnelle."],
+                'publication_rs' => ['titre' => 'Publication sur les Réseaux Sociaux', 'desc' => "La vidéo doit être publiée sur le compte TikTok et Instagram du créateur, en identifiant le compte officiel de la marque et en utilisant les hashtags dédiés à la campagne."],
+                'exclusivite' => ['titre' => 'Exclusivité et Non-Concurrence', 'desc' => "Pendant une durée de 30 jours suivant la publication, le créateur s'engage à ne pas promouvoir de produits directement concurrents sur ses réseaux sociaux."],
+                'droits_ugc' => ['titre' => "Droits d'Utilisation (UGC)", 'desc' => "La marque se réserve le droit d'utiliser le contenu vidéo créé à des fins publicitaires (Ads) sur l'ensemble de ses plateformes pendant une durée de 6 mois."],
+                'delais' => ['titre' => 'Respect des Délais (Livrables)', 'desc' => "Le premier brouillon de la vidéo doit être soumis à la validation de la marque au plus tard 7 jours après la réception du produit."]
+            ];
+
+            // Insert templates
+            if (is_array($templates)) {
+                foreach ($templates as $tKey) {
+                    if (isset($defaultTemplates[$tKey])) {
+                        $this->createRule([
+                            'titre' => $defaultTemplates[$tKey]['titre'],
+                            'description' => $defaultTemplates[$tKey]['desc'],
+                            'contrat_id' => $contratId,
+                            'position' => null,
+                            'created_by' => (int)$_SESSION['user_id'],
+                            'source' => 'manuel'
+                        ]);
+                    }
+                }
+            }
+
+            // Insert custom rule
+            if (!empty($titreCustom)) {
+                $this->createRule([
+                    'titre' => $titreCustom,
+                    'description' => $descCustom,
+                    'contrat_id' => $contratId,
+                    'position' => $position,
+                    'created_by' => (int)$_SESSION['user_id'],
+                    'source' => 'manuel'
+                ]);
+            }
+
+            $_SESSION['success'] = "Règles ajoutées avec succès.";
+            header('Location: index.php?ctrl=user&action=showContrat&id=' . $contratId);
             exit;
         }
     }

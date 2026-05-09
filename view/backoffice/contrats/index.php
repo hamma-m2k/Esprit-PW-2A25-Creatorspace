@@ -11,7 +11,7 @@
   </div>
   <div class="stat-card">
     <div class="stat-icon green">◆</div>
-    <div><div class="stat-value"><?= $stats['actif'] ?></div><div class="stat-label">Actifs</div></div>
+    <div><div class="stat-value"><?= $stats['accepte'] ?></div><div class="stat-label">Acceptés</div></div>
   </div>
   <div class="stat-card">
     <div class="stat-icon blue">◧</div>
@@ -27,7 +27,7 @@
   </div>
   <div class="stat-card">
     <div class="stat-icon purple">◈</div>
-    <div><div class="stat-value"><?= $stats['brouillon'] ?></div><div class="stat-label">Brouillons</div></div>
+    <div><div class="stat-value"><?= $stats['en_attente'] ?></div><div class="stat-label">En attente</div></div>
   </div>
 </div>
 
@@ -41,13 +41,13 @@
 
   <!-- Filtres -->
   <div class="filters">
-    <a href="index.php?ctrl=user&action=contrats" class="filter-btn active">Tous</a>
-    <a href="?type=CDI"  class="filter-btn">CDI</a>
-    <a href="?type=CDD"  class="filter-btn">CDD</a>
-    <a href="?type=CDIV" class="filter-btn">CDIV</a>
-    <a href="?statut=actif"     class="filter-btn">Actifs</a>
-    <a href="?statut=brouillon" class="filter-btn">Brouillons</a>
-    <a href="?statut=archive"   class="filter-btn">Archivés</a>
+    <a href="index.php?ctrl=user&action=contrats" class="filter-btn <?= (!isset($_GET['type']) && !isset($_GET['statut'])) ? 'active' : '' ?>">Tous</a>
+    <a href="index.php?ctrl=user&action=contrats&type=CDI"  class="filter-btn <?= (isset($_GET['type']) && $_GET['type'] === 'CDI') ? 'active' : '' ?>">CDI</a>
+    <a href="index.php?ctrl=user&action=contrats&type=CDD"  class="filter-btn <?= (isset($_GET['type']) && $_GET['type'] === 'CDD') ? 'active' : '' ?>">CDD</a>
+    <a href="index.php?ctrl=user&action=contrats&type=CDIV" class="filter-btn <?= (isset($_GET['type']) && $_GET['type'] === 'CDIV') ? 'active' : '' ?>">CDIV</a>
+    <a href="index.php?ctrl=user&action=contrats&statut=accepte" class="filter-btn <?= (isset($_GET['statut']) && $_GET['statut'] === 'accepte') ? 'active' : '' ?>">Acceptés</a>
+    <a href="index.php?ctrl=user&action=contrats&statut=en_attente" class="filter-btn <?= (isset($_GET['statut']) && $_GET['statut'] === 'en_attente') ? 'active' : '' ?>">En attente</a>
+    <a href="index.php?ctrl=user&action=contrats&statut=archive" class="filter-btn <?= (isset($_GET['statut']) && $_GET['statut'] === 'archive') ? 'active' : '' ?>">Archivés</a>
   </div>
 
   <?php if (empty($contrats)): ?>

@@ -18,7 +18,7 @@
     <span style="font-size:12px;color:var(--text-muted);margin-right:4px;">Filtrer par contrat :</span>
     <a href="index.php?ctrl=user&action=rules" class="filter-btn active">Tous</a>
     <?php foreach ($contrats as $c): ?>
-    <a href="&contrat_id=<?= $c['id'] ?>" class="filter-btn"><?= htmlspecialchars($c['titre']) ?></a>
+    <a href="index.php?ctrl=user&action=rules&contrat_id=<?= $c['id'] ?>" class="filter-btn"><?= htmlspecialchars($c['titre']) ?></a>
     <?php endforeach; ?>
   </div>
 

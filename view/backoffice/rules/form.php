@@ -52,6 +52,25 @@ $pageSubtitle= $isEdit ? '#' . $rule['id'] . ' — ' . htmlspecialchars($rule['t
         <?php endif; ?>
       </div>
 
+      <?php if (!$isEdit && !empty($templates)): ?>
+      <!-- ═══ Modèles Prédéfinis ═══ -->
+      <div class="form-group" style="background:rgba(124, 111, 239, 0.05);padding:15px;border-radius:10px;border:1px solid rgba(124, 111, 239, 0.2);margin-bottom:24px;">
+        <label class="form-label" style="display:block;margin-bottom:12px;font-weight:600;color:var(--accent-light);">Règles Prédéfinies (Cochez pour ajouter)</label>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <?php foreach ($templates as $key => $t): ?>
+          <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid var(--border);transition:0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">
+            <input type="checkbox" name="templates[]" value="<?= htmlspecialchars($key) ?>" style="margin-top:4px;accent-color:var(--accent);width:16px;height:16px;">
+            <div>
+              <div style="font-weight:600;font-size:14px;margin-bottom:4px;"><?= htmlspecialchars($t['titre']) ?></div>
+              <div style="font-size:12px;color:var(--text-muted);line-height:1.4;"><?= htmlspecialchars($t['desc']) ?></div>
+            </div>
+          </label>
+          <?php endforeach; ?>
+        </div>
+        <p style="font-size:12px;color:var(--text-dim);margin-top:10px;font-style:italic;">Vous pouvez cocher plusieurs modèles et/ou créer une règle personnalisée ci-dessous.</p>
+      </div>
+      <?php endif; ?>
+
       <!-- ═══ Génération IA ═══ -->
       <div class="form-group" style="background:#f7f5ff;padding:12px;border-radius:8px;border:1px dashed #7c5cff;">
         <label class="form-label" for="ai_topic">🤖 Générer avec l'IA</label>
@@ -89,7 +108,7 @@ $pageSubtitle= $isEdit ? '#' . $rule['id'] . ' — ' . htmlspecialchars($rule['t
           name="titre"
           placeholder="Ex : Confidentialité des données"
           value="<?= htmlspecialchars($old['titre'] ?? $rule['titre'] ?? '') ?>"
-          required minlength="2" maxlength="200"
+          minlength="2" maxlength="200"
         >
         <?php if (isset($errors['titre'])): ?>
         <div class="form-error">⚠ <?= htmlspecialchars($errors['titre']) ?></div>
