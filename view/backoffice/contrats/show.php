@@ -132,15 +132,15 @@
       $isSignataire = ((int)$_SESSION['user_id'] === (int)$contrat['signed_by']);
       $isAdmin = ($_SESSION['role'] === 'admin');
       
-      // Step 1: Createur accepte le contrat
-      if ($contrat['statut'] === 'en_attente' && $isSignataire): 
+      // Step 1: Createur accepte le contrat (Open offer)
+      if ($contrat['statut'] === 'en_attente' && $_SESSION['type_compte'] === 'createur'): 
       ?>
       <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
         <div class="form-label" style="color:var(--accent);">Action requise (Créateur)</div>
-        <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Veuillez lire le contrat et l'accepter pour l'envoyer à l'administrateur.</p>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">En cliquant sur ce bouton, vous acceptez ce contrat et il vous sera assigné exclusivement.</p>
         <div style="display:flex;gap:10px;">
           <form method="POST" action="index.php?ctrl=user&action=acceptContratAction&id=<?= $contrat['id'] ?>">
-            <button type="submit" class="btn btn-success btn-sm" style="background:#7c6fef;border:none;color:white;">Envoyer une acceptation de contrat</button>
+            <button type="submit" class="btn btn-success btn-sm" style="background:#7c6fef;border:none;color:white;">S'assigner et accepter le contrat</button>
           </form>
           <form method="POST" action="index.php?ctrl=user&action=refuseContratAction&id=<?= $contrat['id'] ?>">
             <button type="submit" class="btn btn-danger btn-sm">Refuser</button>

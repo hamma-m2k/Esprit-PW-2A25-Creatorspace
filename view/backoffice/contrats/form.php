@@ -119,19 +119,7 @@ $statutVal      = $old['statut']      ?? ($isEdit ? $contrat['statut'] : 'en_att
         >
       </div>
 
-      <!-- ── SIGNATAIRE (FK users) ── -->
-      <div class="form-group" style="margin-bottom:20px;">
-        <label class="form-label" style="display:block;margin-bottom:8px;font-weight:500;">Signataire (compte utilisateur)</label>
-        <select class="form-control" name="signed_by" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,0.03);color:white;">
-          <option value="" style="background:#1a1a2e;">— Aucun —</option>
-          <?php foreach ($users as $u): ?>
-          <?php $sel = ($signedByVal == $u->getId()) ? 'selected' : ''; ?>
-          <option value="<?= $u->getId() ?>" <?= $sel ?> style="background:#1a1a2e;">
-            <?= htmlspecialchars($u->getPrenom() . ' ' . $u->getNom() . ' (' . $u->getMail() . ')') ?>
-          </option>
-          <?php endforeach; ?>
-        </select>
-      </div>
+
 
       <!-- ── STATUT ── -->
       <div class="form-group" style="margin-bottom:30px;">

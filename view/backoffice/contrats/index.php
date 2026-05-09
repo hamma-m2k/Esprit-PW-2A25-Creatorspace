@@ -124,20 +124,27 @@
             <div class="actions">
               <a href="index.php?ctrl=user&action=showContrat&id=<?= $c['id'] ?>"
                  class="btn btn-outline btn-sm btn-icon" title="Voir">◉</a>
-              <?php if ($_SESSION['type_compte'] === 'societe'): ?>
-              <a href="index.php?ctrl=user&action=editContrat&id=<?= $c['id'] ?>"
-                 class="btn btn-outline btn-sm btn-icon" title="Modifier">✎</a>
-              <?php endif; ?>
               
-              <a href="index.php?ctrl=user&action=createRuleForm&contrat_id=<?= $c['id'] ?>"
-                 class="btn btn-primary btn-sm btn-icon" title="Ajouter rules">◆</a>
-              
-              <?php if ($_SESSION['type_compte'] === 'societe' || $_SESSION['role'] === 'admin'): ?>
-              <form method="POST" action="index.php?ctrl=user&action=deleteContratAction&id=<?= $c['id'] ?>"
-                    onsubmit="return confirm('Supprimer ce contrat et toutes ses règles ?')"
-                    style="display:inline;">
-                <button type="submit" class="btn btn-danger btn-sm btn-icon" title="Supprimer">✕</button>
-              </form>
+              <?php if ($c['statut'] === 'accepte'): ?>
+              <span class="btn btn-sm btn-icon" title="Verrouillé (Accepté)" style="cursor:not-allowed;background:rgba(255,255,255,0.05);color:var(--text-muted);border:1px solid transparent;">🔒</span>
+              <?php else: ?>
+                  <?php if ($_SESSION['type_compte'] === 'societe' || $_SESSION['role'] === 'admin'): ?>
+                  <a href="index.php?ctrl=user&action=editContrat&id=<?= $c['id'] ?>"
+                     class="btn btn-outline btn-sm btn-icon" title="Modifier">✎</a>
+                  <?php endif; ?>
+                  
+                  <?php if ($_SESSION['type_compte'] === 'societe'): ?>
+                  <a href="index.php?ctrl=user&action=createRuleForm&contrat_id=<?= $c['id'] ?>"
+                     class="btn btn-primary btn-sm btn-icon" title="Ajouter rules">◆</a>
+                  <?php endif; ?>
+                  
+                  <?php if ($_SESSION['type_compte'] === 'societe' || $_SESSION['role'] === 'admin'): ?>
+                  <form method="POST" action="index.php?ctrl=user&action=deleteContratAction&id=<?= $c['id'] ?>"
+                        onsubmit="return confirm('Supprimer ce contrat et toutes ses règles ?')"
+                        style="display:inline;">
+                    <button type="submit" class="btn btn-danger btn-sm btn-icon" title="Supprimer">✕</button>
+                  </form>
+                  <?php endif; ?>
               <?php endif; ?>
             </div>
           </td>

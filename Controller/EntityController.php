@@ -1814,7 +1814,7 @@ Si tu ne trouves pas les données, réponds avec des chaînes vides.";
                 'description' => trim($_POST['description'] ?? ''),
                 'type'        => trim($_POST['type'] ?? 'CDI'),
                 'signature'   => trim($_POST['signature'] ?? ''),
-                'signed_by'   => !empty($_POST['signed_by']) ? (int)$_POST['signed_by'] : null,
+                'signed_by'   => null,
                 'statut'      => trim($_POST['statut'] ?? 'en_attente'),
                 'created_by'  => (int)$_SESSION['user_id'],
             ];
@@ -1891,7 +1891,7 @@ Si tu ne trouves pas les données, réponds avec des chaînes vides.";
                 'description' => trim($_POST['description'] ?? ''),
                 'type'        => trim($_POST['type'] ?? 'CDI'),
                 'signature'   => trim($_POST['signature'] ?? ''),
-                'signed_by'   => !empty($_POST['signed_by']) ? (int)$_POST['signed_by'] : null,
+                'signed_by'   => $contrat['signed_by'],
                 'statut'      => trim($_POST['statut'] ?? 'en_attente'),
             ];
 
@@ -1933,13 +1933,14 @@ Si tu ne trouves pas les données, réponds avec des chaînes vides.";
         $contrat = $this->getContratById($id);
         
         if ($contrat) {
-            // Step 1: Createur accepts
-            if ($_SESSION['type_compte'] === 'createur' && (int)$_SESSION['user_id'] === (int)$contrat['signed_by']) {
-                $this->updateContratStatut($id, 'approuve_createur');
-                $_SESSION['success'] = "Vous avez envoyé votre acceptation. En attente de l'approbation de l'administrateur.";
+            // Step 1: Createur accepts an open contract
+            if ($_SESSION['type_compte'] === 'createur' && $contrat['statut'] === 'en_attente') {
+                $stmt = $this->pdo->prepare("UPDATE contrats SET statut = 'approuve_createur', signed_by = ? WHERE id = ?");
+                $stmt->execute([$_SESSION['user_id'], $id]);
+                $_SESSION['success'] = "Vous vous êtes assigné ce contrat. En attente de l'approbation de l'administrateur.";
             } 
             // Step 2: Admin approves as witness
-            elseif ($_SESSION['role'] === 'admin') {
+            elseif ($_SESSION['role'] === 'admin' && $contrat['statut'] === 'approuve_createur') {
                 $this->updateContratStatut($id, 'accepte');
                 $_SESSION['success'] = "Le contrat a été définitivement approuvé (Témoin).";
             }
@@ -2117,7 +2118,9 @@ Si tu ne trouves pas les données, réponds avec des chaînes vides.";
 
     public function getContratsForUser(int $userId, string $typeCompte): array
     {
-        $whereClause = ($typeCompte === 'societe') ? 'c.created_by = ?' : 'c.signed_by = ?';
+        $whereClause = ($typeCompte === 'societe') 
+            ? 'c.created_by = ?' 
+            : "(c.statut = 'en_attente' OR c.signed_by = ?)";
         
         $stmt = $this->pdo->prepare('
             SELECT c.*,
