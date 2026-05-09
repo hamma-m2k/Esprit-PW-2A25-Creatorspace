@@ -1851,6 +1851,12 @@ Si tu ne trouves pas les données, réponds avec des chaînes vides.";
             exit;
         }
 
+        if ($contrat['statut'] === 'accepte') {
+            $_SESSION['form_errors'] = ['statut' => "Ce contrat est verrouillé et ne peut plus être modifié."];
+            header('Location: index.php?ctrl=user&action=showContrat&id=' . $id);
+            exit;
+        }
+
         $users = $this->getAllUsers();
         $errors = $_SESSION['form_errors'] ?? [];
         $old = $_SESSION['form_old'] ?? $contrat;
